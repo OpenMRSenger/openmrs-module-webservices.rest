@@ -1,0 +1,35 @@
+name: Generate CycloneDX SBOM
+
+# Deze workflow start automatisch bij een push naar main
+# De workflow_dispatch zorgt ervoor dat je hem ook met de hand kunt aanzetten via de 'Actions' tab (handig voor testen!)
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: 
+
+jobs:
+  generate-sbom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11' # Let op: OpenMRS gebruikt vaak Java 8 of 11. Pas dit aan naar '8' als de build faalt.
+          distribution: 'temurin'
+          cache: 'maven' # Versnelt de workflow door Maven dependencies te cachen
+
+      - name: Genereer SBOM (Maven CycloneDX Plugin)
+        # We slaan de tests hier even over (-DskipTests) zodat de SBOM lekker snel genereert
+        run: mvn org.cyclonedx:cyclonedx-maven-plugin:2.8.0:makeBom -DskipTests
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx-json
+          # De plugin plaatst de bestanden standaard in de target/ map. 
+          path: target/bom.json
+          retention-days: 14 # Na 14 dagen wordt het bestand verwijderd om ruimte te besparen
