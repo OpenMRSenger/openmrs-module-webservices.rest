@@ -27,7 +27,7 @@ jobs:
         run: mvn org.cyclonedx:cyclonedx-maven-plugin:2.8.0:makeBom -DskipTests
 
       - name: Upload SBOM Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx-json
           # De plugin plaatst de bestanden standaard in de target/ map. 
