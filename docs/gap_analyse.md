@@ -1,98 +1,229 @@
-# Wat is een gap-analyse en waarom maak je deze?
+# Gap-analyse NEN 7510-2:2024 – OpenMRS REST Module
 
-Een **gap-analyse** is een vergelijking tussen:
+## Projectinformatie
 
-1. De **huidige situatie (as-is)** – hoe een systeem, proces of organisatie momenteel werkt.
-2. De **gewenste situatie (to-be)** – hoe het volgens een norm, wet of eis zou moeten werken.
+**Project:** OpenMRS REST Web Services Module
 
-De "gap" (kloof) is het verschil tussen deze twee situaties.
+**Repository:** https://github.com/openmrs/openmrs-module-webservices.rest
 
-## Voorbeeld met OpenMRS en NEN 7510
+## Samenvatting
 
-De norm **NEN 7510-2:2024** stelt onder andere eisen aan:
-
-- Toegangsbeveiliging (A.8.3)
-- Authenticatie (A.8.5)
-- Logging (A.8.15)
-
-Vervolgens wordt onderzocht:
-
-| Vraag                | Voorbeeld                   |
-| -------------------- | --------------------------- |
-| Wat eist de norm?    | MFA of sterke authenticatie |
-| Wat doet OpenMRS nu? | Basic Authentication        |
-| Is dat voldoende?    | Nee, slechts gedeeltelijk   |
-| Wat ontbreekt?       | MFA                         |
-| Wat moet gebeuren?   | MFA implementeren           |
-
-Het ontbrekende deel wordt de **gap** genoemd.
+| NEN 7510 Control          | Status                | Beoordeling                                                                                                                              |
+| ------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| A.8.3 Toegangsbeveiliging | Gedeeltelijk aanwezig | OpenMRS gebruikt RBAC (rollen en privileges), maar de REST-module vertrouwt grotendeels op OpenMRS Core voor autorisatie.                |
+| A.8.5 Authenticatie       | Gedeeltelijk aanwezig | Basic Authentication en sessietokens aanwezig, maar geen MFA of sterke authenticatie.                                                    |
+| A.8.15 Logging            | Gedeeltelijk aanwezig | Auditinformatie op objectniveau aanwezig, maar geen volledige security logging van API-toegang, authenticatiepogingen en gebeurtenissen. |
 
 ---
 
-# Waarom maak je een gap-analyse?
+# Control A.8.3 – Toegangsbeveiliging
 
-Een gap-analyse helpt om:
+## Eis uit NEN 7510
 
-## 1. Compliance vast te stellen
+Gebruikers mogen uitsluitend toegang krijgen tot gegevens en functies waarvoor zij geautoriseerd zijn volgens het principe van minimale rechten (least privilege).
 
-Je kunt aantonen of een systeem voldoet aan normen en regelgeving zoals:
+## Huidige implementatie
 
-- NEN 7510
-- ISO 27001
-- AVG/GDPR
-- NIS2
+OpenMRS gebruikt een Role Based Access Control (RBAC) model waarbij gebruikers rechten krijgen via rollen en privileges.
 
-## 2. Risico's te identificeren
+Daarnaast vereist de REST API authenticatie voor vrijwel alle endpoints.
 
-Ontbrekende beveiligingsmaatregelen kunnen leiden tot:
+Voorbeeld van aanvullende beveiliging:
 
-- Datalekken
-- Onbevoegde toegang
-- Onvoldoende controle op beveiligingsincidenten
+```text
+webservices.rest.allowedips
+```
 
-## 3. Verbeteringen te plannen
+Deze configuratie maakt het mogelijk om toegang tot de REST API te beperken op basis van IP-adressen.
 
-Een gap-analyse levert concrete actiepunten op.
+## Bewijs
+
+### OpenMRS Wiki
+
+- User Management & Access Control
+- REST Module documentatie
+- REST API authenticatievereisten
+
+### Voorbeeld configuratie
+
+```text
+webservices.rest.allowedips
+```
+
+## Status
+
+**Gedeeltelijk aanwezig**
+
+## Gap
+
+De REST-module implementeert geen aanvullende toegangscontroles bovenop OpenMRS Core.
+
+Daarnaast ontbreekt aantoonbaar:
+
+- Periodieke review van gebruikersrechten
+- Functiescheiding
+- Vastgelegde least-privilege configuraties
+- Logging van toegang tot patiëntgegevens
+
+## Benodigde maatregelen
+
+1. Documenteren welke REST-endpoints welke privileges vereisen.
+2. Periodieke autorisatiereviews uitvoeren.
+3. API-specifieke rollen definiëren volgens het least-privilege principe.
+4. Logging van toegang tot patiëntgegevens toevoegen.
+
+---
+
+# Control A.8.5 – Authenticatie
+
+## Eis uit NEN 7510
+
+Gebruikers moeten op een veilige manier worden geauthenticeerd voordat toegang wordt verleend tot gegevens of functionaliteiten.
+
+## Huidige implementatie
+
+OpenMRS REST ondersteunt:
+
+- Basic Authentication
+- Sessietokens
 
 Voorbeeld:
 
-| Control             | Huidige situatie   | Gewenste situatie          | Actie                 |
-| ------------------- | ------------------ | -------------------------- | --------------------- |
-| A.8.5 Authenticatie | Basic Auth         | MFA                        | MFA implementeren     |
-| A.8.15 Logging      | Alleen auditvelden | Volledige security logging | API-logging toevoegen |
+```http
+Authorization: Basic base64(username:password)
+```
 
-## 4. Prioriteiten te bepalen
+Sessie-informatie kan worden opgevraagd via:
 
-Niet elke tekortkoming is even belangrijk.
+```http
+GET /ws/rest/v1/session
+```
 
-Voor OpenMRS zouden mogelijke prioriteiten zijn:
+## Bewijs
 
-1. MFA invoeren
-2. Security logging uitbreiden
-3. Rollen en privileges herzien
+### REST API documentatie
+
+Authenticatie via HTTP Basic Authentication:
+
+```http
+Authorization: Basic base64(username:password)
+```
+
+Sessie-endpoint:
+
+```http
+GET /ws/rest/v1/session
+```
+
+## Status
+
+**Gedeeltelijk aanwezig**
+
+## Gap
+
+Geen bewijs gevonden voor:
+
+- Multi-Factor Authentication (MFA)
+- Account lockout na meerdere mislukte logins
+- Adaptieve authenticatie
+- OAuth2/OpenID Connect
+- Logging van authenticatiegebeurtenissen
+
+## Benodigde maatregelen
+
+1. MFA implementeren.
+2. Account lockout configureren.
+3. Sterk wachtwoordbeleid afdwingen.
+4. OAuth2/OpenID Connect implementeren.
+5. Authenticatie-events loggen.
 
 ---
 
-# Opbouw van een gap-analyse
+# Control A.8.15 – Logging
 
-Een gap-analyse bestaat meestal uit vier onderdelen:
+## Eis uit NEN 7510
 
-| Onderdeel             | Beschrijving               |
-| --------------------- | -------------------------- |
-| Eis uit de norm       | Wat verlangt NEN 7510?     |
-| Huidige implementatie | Wat zit er in OpenMRS?     |
-| Gap                   | Wat ontbreekt?             |
-| Maatregel             | Wat moet worden aangepast? |
+Beveiligingsrelevante gebeurtenissen moeten worden geregistreerd zodat incidenten achteraf kunnen worden onderzocht.
 
-### Voorbeeld
+## Huidige implementatie
 
-| Control             | Huidige situatie              | Gap                        | Maatregel                  |
-| ------------------- | ----------------------------- | -------------------------- | -------------------------- |
-| A.8.5 Authenticatie | Basic Authentication aanwezig | Geen MFA                   | MFA implementeren          |
-| A.8.15 Logging      | AuditInfo aanwezig            | Geen logging van API-calls | Security logging toevoegen |
+OpenMRS registreert auditinformatie op objectniveau.
+
+Voorbeeld:
+
+```text
+auditInfo
+- creator
+- dateCreated
+- changedBy
+- dateChanged
+- voidedBy
+```
+
+Deze informatie wordt gekoppeld aan wijzigingen in gegevens.
+
+## Bewijs
+
+### AuditInfo-object
+
+```text
+auditInfo
+- creator
+- dateCreated
+- changedBy
+- dateChanged
+- voidedBy
+```
+
+## Status
+
+**Gedeeltelijk aanwezig**
+
+## Gap
+
+Geen aantoonbaar bewijs gevonden voor logging van:
+
+- Succesvolle logins
+- Mislukte logins
+- REST API-calls
+- Toegang tot patiëntgegevens
+- Security incidents
+- Privilege-escalaties
+
+Ook ontbreekt bewijs voor:
+
+- Centrale logverzameling
+- SIEM-integratie
+- Logretentiebeleid
+- Bescherming tegen wijziging van logbestanden
+
+## Benodigde maatregelen
+
+1. Security logging toevoegen voor alle REST-calls.
+2. Login success- en failure-events registreren.
+3. Toegang tot patiëntgegevens loggen.
+4. Logs integreren met SIEM/Syslog.
+5. Logretentiebeleid vastleggen.
+6. Monitoring en alerting implementeren.
 
 ---
 
-# Definitie voor in het verslag
+# Conclusie
 
-> Een gap-analyse is een methode waarbij de huidige situatie van een systeem wordt vergeleken met de eisen uit een norm. Het doel is om vast te stellen welke onderdelen al voldoen, welke gedeeltelijk voldoen en welke ontbreken, zodat verbetermaatregelen kunnen worden vastgesteld om compliance te bereiken.
+| Control                   | Status                | Belangrijkste tekortkoming                                            |
+| ------------------------- | --------------------- | --------------------------------------------------------------------- |
+| A.8.3 Toegangsbeveiliging | Gedeeltelijk aanwezig | Onvoldoende aantoonbare least-privilege inrichting en toegangsreviews |
+| A.8.5 Authenticatie       | Gedeeltelijk aanwezig | Geen MFA of moderne authenticatiemechanismen                          |
+| A.8.15 Logging            | Gedeeltelijk aanwezig | Onvoldoende security logging en monitoring                            |
+
+## Eindconclusie
+
+De OpenMRS REST-module biedt een basis voor toegangscontrole, authenticatie en auditing via OpenMRS Core. Voor volledige naleving van NEN 7510:2024 zijn echter aanvullende maatregelen nodig.
+
+De belangrijkste tekortkomingen bevinden zich op het gebied van:
+
+- Sterke authenticatie (MFA)
+- Uitgebreide security logging
+- Monitoring en auditing van toegang tot patiëntgegevens
+
+Op basis van deze analyse worden de drie onderzochte controls beoordeeld als **gedeeltelijk aanwezig**.
