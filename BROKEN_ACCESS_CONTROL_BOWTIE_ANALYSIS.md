@@ -8,13 +8,13 @@
 
 ## Bowtie Analysis Table
 
-| **CAUSES (Threats - Left)** | **PREVENTIONS (Left Barriers - Multiple Levels)** | **TOP EVENT** | **CONSEQUENCES (Right Impact)** | **MITIGATIONS (Right Barriers - Multiple Levels)** |
+| **CAUSES (Threats - Left)** | **PREVENTIONS (Left Barriers - CRITICAL)** | **TOP EVENT** | **CONSEQUENCES (Right Impact)** | **MITIGATIONS (Right Barriers - CRITICAL)** |
 |---|---|---|---|---|
 | **Missing Privilege Enforcement** | **[L1-CODE]** @RequiresPrivilege annotations on all resources<br>**[L2-REVIEW]** Mandatory security code reviews<br>**[L3-FRAMEWORK]** Framework-enforced authorization checks<br>**[L4-INFRA]** Fine-grained privilege database constraints | **Broken Access Control - Multiple authorization flaws allowing users to bypass privilege checks** | **Unauthorized data exposure** - Medical records accessed by non-authorized staff | **[L1-OUTPUT]** Role-based filtering on all responses<br>**[L2-MONITOR]** Access pattern monitoring & anomaly detection<br>**[L3-AUDIT]** Immutable audit logs of access<br>**[L4-INCIDENT]** Breach response & notification protocol |
-| **No Ownership Validation** | **[L1-CODE]** Ownership checks in all CRUD operations<br>**[L2-REVIEW]** Unit tests verifying ownership enforcement<br>**[L3-FRAMEWORK]** @PreExecute hook validating resource owner<br>**[L2-TRAINING]** Developer secure coding standards | | **Privilege escalation to Admin** - Full system breach | **[L1-OUTPUT]** Response filtering by ownership<br>**[L3-AUDIT]** Log all ownership validation attempts<br>**[L4-INCIDENT]** Immediate access revocation procedures<br>**[L2-MONITOR]** Detect anomalous user role changes |
-| **Unfiltered Search Results** | **[L1-CODE]** Privilege filter in base search repository<br>**[L2-REVIEW]** Code linting rules enforcing filters<br>**[L3-FRAMEWORK]** Query interceptors adding privilege predicates<br>**[L4-INFRA]** Database row-level security (RLS) constraints | | **Patient record tampering** - Allergies/meds modified → wrong treatment given | **[L1-OUTPUT]** Verify search results against user privileges<br>**[L2-TEST]** Regular security testing of search endpoints<br>**[L3-AUDIT]** Track all search queries & accessed records<br>**[L4-NOTIFY]** Data integrity violation alerts |
-| **No Audit Immutability** | **[L1-CODE]** Append-only audit table design<br>**[L4-INFRA]** Database constraints preventing DELETE on audit<br>**[L3-FRAMEWORK]** Separate backup audit database<br>**[L2-TRAINING]** Audit immutability design patterns | | **Mass data exfiltration** - Entire patient database downloaded | **[L1-OUTPUT]** Backup & recovery capability<br>**[L2-MONITOR]** Detect unauthorized bulk downloads<br>**[L3-AUDIT]** Track exfiltration to data residency logs<br>**[L4-INCIDENT]** Data breach forensics & restoration |
-| **Missing Sub-Resource Checks** | **[L1-CODE]** Parent resource ownership validation before child access<br>**[L3-FRAMEWORK]** @PreExecute hook for nested resource checks<br>**[L2-REVIEW]** Audit all sub-resource endpoints<br>**[L2-TRAINING]** RESTful authorization best practices | | **Audit trail destruction** - Evidence erased → compliance violation | **[L3-AUDIT]** Write-once audit logs with signatures<br>**[L4-INCIDENT]** Forensic analysis tools & procedures<br>**[L2-MONITOR]** Detect audit deletion attempts<br>**[L4-NOTIFY]** Compliance violation alerts |
+| **No Ownership Validation** | **[L1-CODE]** Ownership checks in all CRUD operations<br>**[L2-REVIEW]** Unit tests verifying ownership enforcement<br>**[L3-FRAMEWORK]** @PreExecute hook validating resource owner | | **Privilege escalation to Admin** - Full system breach | **[L1-OUTPUT]** Response filtering by ownership<br>**[L3-AUDIT]** Log all ownership validation attempts<br>**[L4-INCIDENT]** Immediate access revocation procedures<br>**[L2-MONITOR]** Detect anomalous user role changes |
+| **Unfiltered Search Results** | **[L1-CODE]** Privilege filter in base search repository<br>**[L2-REVIEW]** Code linting rules enforcing filters<br>**[L3-FRAMEWORK]** Query interceptors adding privilege predicates<br>**[L4-INFRA]** Database row-level security (RLS) constraints | | **Patient record tampering** - Allergies/meds modified → wrong treatment given | **[L1-OUTPUT]** Verify search results against user privileges<br>**[L3-AUDIT]** Track all search queries & accessed records<br>**[L2-MONITOR]** Detect bulk searches, unusual result set sizes |
+| **No Audit Immutability** | **[L1-CODE]** Append-only audit table design<br>**[L4-INFRA]** Database constraints preventing DELETE on audit | | **Mass data exfiltration** - Entire patient database downloaded | **[L3-AUDIT]** Cryptographic signatures on audit entries<br>**[L2-MONITOR]** Alert on DELETE attempts against audit table<br>**[L1-OUTPUT]** Backup & recovery capability<br>**[L4-INCIDENT]** Data breach forensics & restoration |
+| **Missing Sub-Resource Checks** | **[L1-CODE]** Parent resource ownership validation before child access<br>**[L3-FRAMEWORK]** @PreExecute hook for nested resource checks | | **Audit trail destruction** - Evidence erased → compliance violation | **[L3-AUDIT]** Write-once audit logs with signatures<br>**[L2-MONITOR]** Detect audit deletion attempts |
 | **Unprotected Admin Ops** | **[L1-CODE]** Explicit @RequiresPrivilege(DELETE/PURGE) annotations<br>**[L3-FRAMEWORK]** Framework-level privilege enforcement<br>**[L4-INFRA]** Multi-approval workflow for destructive ops<br>**[L2-REVIEW]** Security review of all admin operations | | **Cross-patient data leaks** - One patient accesses another's records | **[L1-OUTPUT]** Verify admin operations are scoped correctly<br>**[L3-AUDIT]** Log all DELETE/PURGE operations with context<br>**[L2-MONITOR]** Alert on unusual admin activity<br>**[L4-NOTIFY]** Notify affected patients of access incidents |
 
 ---
@@ -52,109 +52,106 @@ This section maps each defense layer with specific identifiers. Defense in depth
 
 | Layer ID | Layer Name | Control Type | Applicable Threats | Specific Controls | Effectiveness |
 |---|---|---|---|---|---|
-| **L1-CODE** | Code-Level Authorization Controls | Preventive | All | @RequiresPrivilege annotations, ownership checks in code, authorization decorators | High - Stops unauthorized access at source |
-| **L2-REVIEW** | Design & Code Review | Preventive | All | Mandatory security reviews of authorization logic, test coverage for permission checks, threat modeling | High - Catches authorization flaws before deployment |
-| **L2-TRAINING** | Developer Training | Preventive | All | Secure coding for authorization, OWASP broken access control, framework best practices | Medium - Reduces authorization logic errors |
-| **L3-FRAMEWORK** | Framework-Level Controls | Preventive | All | @PreExecute hooks, query interceptors, centralized permission validation, decorators | High - Systematic authorization enforcement |
-| **L4-INFRA** | Infrastructure Protection | Preventive | All | Database row-level security (RLS), privilege table constraints, network segmentation, firewall rules | Medium - Defense perimeter protection |
+| **L1-CODE** | Code-Level Authorization Controls | Preventive | All (CRITICAL) | @RequiresPrivilege annotations, ownership checks in code, authorization decorators | High - Stops unauthorized access at source |
+| **L2-REVIEW** | Design & Code Review | Preventive | Missing Privilege, No Ownership, Unfiltered Search, Unprotected Admin (CRITICAL) | Mandatory security reviews of authorization logic, test coverage for permission checks, threat modeling | High - Catches authorization flaws before deployment |
+| **L2-TRAINING** | Developer Training | Preventive | All (RECOMMENDED) | Secure coding for authorization, OWASP broken access control, framework best practices | Medium - Reduces authorization logic errors |
+| **L3-FRAMEWORK** | Framework-Level Controls | Preventive | Missing Privilege, No Ownership, Unfiltered Search, Unprotected Admin (CRITICAL); Sub-Resource Checks (RECOMMENDED) | @PreExecute hooks, query interceptors, centralized permission validation, decorators | High - Systematic authorization enforcement |
+| **L4-INFRA** | Infrastructure Protection | Preventive | Unfiltered Search, Unprotected Admin (CRITICAL); Audit Immutability (CRITICAL); Missing Privilege (RECOMMENDED) | Database row-level security (RLS), privilege table constraints, network segmentation, firewall rules, DB triggers | Medium - Defense perimeter protection |
 
 ### MITIGATION LAYERS (Right Side - Detect & Contain Attacks)
 
 | Layer ID | Layer Name | Control Type | Applicable Consequences | Specific Controls | Detection Time |
 |---|---|---|---|---|---|
-| **L1-OUTPUT** | Response Data Filtering | Corrective | All data leaks | Filter response data by user privileges, verify ownership before returning data | Immediate (prevents data leak) |
-| **L2-MONITOR** | Monitoring & Logging | Detective | All consequences | Log all authorization attempts/denials, SIEM integration, anomaly detection | Seconds to minutes |
-| **L2-TEST** | Security Testing | Detective | All threats | Penetration testing, authorization bypass attempts, privilege escalation testing | Pre-deployment |
-| **L3-AUDIT** | Audit Logging & Immutability | Detective | All consequences | Write-once audit logs, track all access/modifications, cryptographic signatures | Immediate (immutable record) |
-| **L3-COOKIE** | Session Security | Corrective | Unauthorized access | HTTP-Only flags, Secure flag, SameSite attribute, session timeout | Immediate (limits session access) |
-| **L4-ENCODING** | Data Protection | Corrective | Data exfiltration | Encryption at rest, encryption in transit (TLS), field-level encryption | Immediate (data unreadable) |
+| **L1-OUTPUT** | Response Data Filtering | Corrective | Unauthorized Access, Data Leaks | Filter response data by user privileges, verify ownership before returning data | Immediate (prevents data leak) |
+| **L2-MONITOR** | Monitoring & Logging | Detective | All consequences | Log all authorization attempts/denials, SIEM integration, anomaly detection for unusual access patterns | Seconds to minutes |
+| **L3-AUDIT** | Audit Logging & Immutability | Detective | All (especially Audit Destruction) | Write-once audit logs, track all access/modifications, cryptographic signatures, tamper detection | Immediate (immutable record) |
 | **L4-INCIDENT** | Incident Response | Corrective | All consequences | Detect privilege escalation, contain unauthorized access, revoke compromised credentials | Minutes to hours |
-| **L4-NOTIFY** | User Communication | Corrective | Cross-patient leaks, reputation | Breach notification, affected patient alerts, regulatory reporting | Hours to days |
+| **L4-NOTIFY** | User Communication | Corrective | Cross-patient leaks, Reputation damage | Breach notification, affected patient alerts, regulatory reporting | Hours to days |
 
 ### Defense-in-Depth Strategy by Threat
 
 #### Threat 1: Missing Privilege Enforcement
 
 **Prevention Chain (Left):**
-1. **L1-CODE:** Mandatory @RequiresPrivilege annotations on all API resources
-2. **L2-REVIEW:** Security code review verifying privilege checks on every method
-3. **L3-FRAMEWORK:** Framework decorator enforcement of @RequiresPrivilege before method execution
-4. **L4-INFRA:** Database privilege table constraints backing up framework checks
+1. **L1-CODE:** Mandatory @RequiresPrivilege annotations on all API resources *(CRITICAL)*
+2. **L2-REVIEW:** Security code review verifying privilege checks on every method *(CRITICAL)*
+3. **L3-FRAMEWORK:** Framework decorator enforcement of @RequiresPrivilege before method execution *(CRITICAL)*
+4. **L4-INFRA:** Database privilege table constraints backing up framework checks *(CRITICAL)*
 
 **Mitigation Chain (Right):**
-1. **L1-OUTPUT:** Filter response objects by user's granted privileges
-2. **L2-MONITOR:** Log all authorization denials and detect repeated failed attempts
-3. **L3-AUDIT:** Write to immutable audit log of all access attempts
-4. **L4-INCIDENT:** Alert on repeated privilege check failures; trigger access review
+1. **L1-OUTPUT:** Filter response objects by user's granted privileges *(CRITICAL)*
+2. **L2-MONITOR:** Log all authorization denials and detect repeated failed attempts *(CRITICAL)*
+3. **L3-AUDIT:** Write to immutable audit log of all access attempts *(CRITICAL)*
+4. **L4-INCIDENT:** Alert on repeated privilege check failures; trigger access review *(CRITICAL)*
 
 #### Threat 2: No Ownership Validation
 
 **Prevention Chain (Left):**
-1. **L1-CODE:** Ownership validation in all retrieve/update/delete operations
-2. **L2-REVIEW:** Unit test requirements verifying ownership enforcement
-3. **L3-FRAMEWORK:** @PreExecute hook validating resource owner before CRUD op
-4. **L2-TRAINING:** Ownership validation as mandatory secure coding pattern
+1. **L1-CODE:** Ownership validation in all retrieve/update/delete operations *(CRITICAL)*
+2. **L2-REVIEW:** Unit test requirements verifying ownership enforcement *(CRITICAL)*
+3. **L3-FRAMEWORK:** @PreExecute hook validating resource owner before CRUD op *(CRITICAL)*
+4. **L4-INFRA:** Database constraints ensuring ownership relationship exists *(RECOMMENDED)*
 
 **Mitigation Chain (Right):**
-1. **L1-OUTPUT:** Response validation ensuring only owner sees data
-2. **L3-AUDIT:** Track all ownership validation attempts (pass/fail)
-3. **L2-MONITOR:** Alert on ownership validation failures (privilege escalation attempts)
-4. **L4-INCIDENT:** Immediate investigation and access revocation
+1. **L1-OUTPUT:** Response validation ensuring only owner sees data *(CRITICAL)*
+2. **L3-AUDIT:** Track all ownership validation attempts (pass/fail) *(CRITICAL)*
+3. **L2-MONITOR:** Alert on ownership validation failures (privilege escalation attempts) *(CRITICAL)*
+4. **L4-INCIDENT:** Immediate investigation and access revocation *(CRITICAL)*
 
 #### Threat 3: Unfiltered Search Results
 
 **Prevention Chain (Left):**
-1. **L1-CODE:** Privilege predicate added in base search repository class
-2. **L2-REVIEW:** Code linting rules enforcing privilege filters on all searches
-3. **L3-FRAMEWORK:** Query interceptors automatically adding privilege WHERE clauses
-4. **L4-INFRA:** Database row-level security (RLS) policies limiting query result set
+1. **L1-CODE:** Privilege predicate added in base search repository class *(CRITICAL)*
+2. **L2-REVIEW:** Code linting rules enforcing privilege filters on all searches *(CRITICAL)*
+3. **L3-FRAMEWORK:** Query interceptors automatically adding privilege WHERE clauses *(CRITICAL)*
+4. **L4-INFRA:** Database row-level security (RLS) policies limiting query result set *(CRITICAL)*
 
 **Mitigation Chain (Right):**
-1. **L1-OUTPUT:** Response filtering verifying search results respect privileges
-2. **L2-TEST:** Regular penetration testing attempting privilege bypass on search
-3. **L3-AUDIT:** Track all searches and records accessed
-4. **L2-MONITOR:** Detect anomalies (bulk searches, unusual result set sizes)
+1. **L1-OUTPUT:** Response filtering verifying search results respect privileges *(CRITICAL)*
+2. **L2-TEST:** Regular penetration testing attempting privilege bypass on search *(RECOMMENDED)*
+3. **L3-AUDIT:** Track all searches and records accessed *(CRITICAL)*
+4. **L2-MONITOR:** Detect anomalies (bulk searches, unusual result set sizes) *(CRITICAL)*
 
 #### Threat 4: No Audit Immutability
 
-**Prevention Chain (Left):**
-1. **L1-CODE:** Append-only audit table schema (no UPDATE/DELETE)
-2. **L4-INFRA:** Database trigger preventing DELETE operations on audit table
-3. **L3-FRAMEWORK:** Audit records written to separate backup database
-4. **L2-TRAINING:** Audit immutability as non-negotiable design requirement
+**Prevention Chain (Left) - Integrity & Non-Repudiation:**
+1. **L1-CODE:** Append-only audit table schema (no UPDATE/DELETE operations allowed) *(CRITICAL)*
+2. **L4-INFRA:** Database trigger preventing DELETE operations on audit table + backup audit database *(CRITICAL)*
+3. **L3-FRAMEWORK:** Separate audit system writing to isolated DB; no app-level DELETE capability *(RECOMMENDED)*
+4. **L2-REVIEW:** Security review of audit system design *(RECOMMENDED)*
 
-**Mitigation Chain (Right):**
-1. **L1-OUTPUT:** Maintain backup databases of all audit records
-2. **L2-MONITOR:** Alert on DELETE attempts against audit table
-3. **L3-AUDIT:** Cryptographic signatures on audit entries (detect tampering)
-4. **L4-INCIDENT:** Restore audit from backup; forensic analysis of tampering
+**Mitigation Chain (Right) - Detection & Recovery:**
+1. **L3-AUDIT:** Cryptographic signatures on audit entries (detect tampering) *(CRITICAL)*
+2. **L2-MONITOR:** Alert on DELETE attempts against audit table *(CRITICAL)*
+3. **L1-OUTPUT:** Maintain backup databases of all audit records *(CRITICAL)*
+4. **L4-INCIDENT:** Restore audit from backup; forensic analysis of tampering *(CRITICAL)*
 
 #### Threat 5: Missing Sub-Resource Checks
 
 **Prevention Chain (Left):**
-1. **L1-CODE:** Parent resource ownership validation before child resource access
-2. **L3-FRAMEWORK:** @PreExecute hook verifying parent->child privilege path
-3. **L2-REVIEW:** Security audit of all sub-resource endpoints (e.g., /patient/{id}/allergies)
-4. **L2-TRAINING:** Hierarchical authorization patterns
+1. **L1-CODE:** Parent resource ownership validation before child resource access *(CRITICAL)*
+2. **L3-FRAMEWORK:** @PreExecute hook verifying parent->child privilege path *(CRITICAL)*
+3. **L2-REVIEW:** Security audit of all sub-resource endpoints (e.g., /patient/{id}/allergies) *(RECOMMENDED)*
+4. **L4-INFRA:** Not directly applicable (code-level concern) *(N/A)*
 
 **Mitigation Chain (Right):**
-1. **L3-AUDIT:** Track parent-child authorization decisions
-2. **L4-INCIDENT:** Log and alert on sub-resource authorization failures
-4. **L2-MONITOR:** Detect attempts to access sub-resources via URL manipulation
+1. **L3-AUDIT:** Track parent-child authorization decisions *(CRITICAL)*
+2. **L2-MONITOR:** Detect attempts to access sub-resources via URL manipulation *(CRITICAL)*
+3. **L4-INCIDENT:** Log and alert on sub-resource authorization failures *(RECOMMENDED)*
 
 #### Threat 6: Unprotected Admin Operations
 
 **Prevention Chain (Left):**
-1. **L1-CODE:** Explicit @RequiresPrivilege(ADMIN) on DELETE/PURGE operations
-2. **L3-FRAMEWORK:** Framework enforces administrative privilege check before destructive ops
-3. **L4-INFRA:** Multi-approval workflow for DELETE/PURGE operations
-4. **L2-REVIEW:** Security review of all DELETE/PURGE implementations
+1. **L1-CODE:** Explicit @RequiresPrivilege(ADMIN) on DELETE/PURGE operations *(CRITICAL)*
+2. **L3-FRAMEWORK:** Framework enforces administrative privilege check before destructive ops *(CRITICAL)*
+3. **L4-INFRA:** Multi-approval workflow for DELETE/PURGE operations *(CRITICAL)*
+4. **L2-REVIEW:** Security review of all DELETE/PURGE implementations *(CRITICAL)*
 
 **Mitigation Chain (Right):**
-1. **L1-OUTPUT:** Verify admin operations are scoped to correct resource
-2. **L3-AUDIT:** Log all DELETE/PURGE with context (who, what, when, why)
-3. **L2-MONITOR:** Alert on unusual DELETE/PURGE patterns
-4. **L4-NOTIFY:** Trace DELETE/PURGE impact; notify affected patients
+1. **L1-OUTPUT:** Verify admin operations are scoped to correct resource *(CRITICAL)*
+2. **L3-AUDIT:** Log all DELETE/PURGE with context (who, what, when, why) *(CRITICAL)*
+3. **L2-MONITOR:** Alert on unusual DELETE/PURGE patterns *(CRITICAL)*
+4. **L4-NOTIFY:** Trace DELETE/PURGE impact; notify affected patients *(CRITICAL)*
 
 ### Cross-Layer Attack Scenario: Privilege Escalation Attempt
 
