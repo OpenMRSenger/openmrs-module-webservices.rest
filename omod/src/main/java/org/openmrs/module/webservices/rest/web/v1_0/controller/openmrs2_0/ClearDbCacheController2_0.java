@@ -49,6 +49,7 @@ public class ClearDbCacheController2_0 extends BaseRestController {
 	@RequestMapping
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void clearDbCache(@RequestBody(required = false) String json) throws Exception {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		String resourceName = null;
 		String subResourceName = null;
 		String uuid = null;
