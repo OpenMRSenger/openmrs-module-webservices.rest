@@ -57,20 +57,27 @@ public class AuthorizationFilter implements Filter {
 		log.debug("Destroying REST WS Authorization filter");
 	}
 	
-	/**
-	 * @see javax.servlet.Filter#doFilter(javax.servlet.ServletRequest, javax.servlet.ServletResponse,
-	 *      javax.servlet.FilterChain)
-	 */
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 	        throws IOException, ServletException {
 		
+		String ipAddress = null;
+		if (request instanceof HttpServletRequest) {
+			String xff = ((HttpServletRequest) request).getHeader("X-Forwarded-For");
+			if (StringUtils.isNotBlank(xff)) {
+				ipAddress = xff.split(",")[0].trim();
+			}
+		}
+		if (StringUtils.isBlank(ipAddress)) {
+			ipAddress = request.getRemoteAddr();
+		}
+		
 		// check the IP address first.  If its not valid, return a 403
-		if (!RestUtil.isIpAllowed(request.getRemoteAddr())) {
+		if (!RestUtil.isIpAllowed(ipAddress)) {
 			// the ip address is not valid, set a 403 http error code
 			HttpServletResponse httpresponse = (HttpServletResponse) response;
 			httpresponse.sendError(HttpServletResponse.SC_FORBIDDEN,
-			    "IP address '" + request.getRemoteAddr() + "' is not authorized");
+			    "IP address '" + ipAddress + "' is not authorized");
 			return;
 		}
 		
@@ -88,6 +95,14 @@ public class AuthorizationFilter implements Filter {
 					// check that header is in format "Basic ${base64encode(username + ":" + password)}"
 					if (basicAuth.startsWith("Basic")) {
 						try {
+							// Enforce SSL/TLS for Basic Auth to prevent cleartext credentials leakage
+							boolean isSecure = httpRequest.isSecure() || "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
+							if (!isSecure) {
+								HttpServletResponse httpResponse = (HttpServletResponse) response;
+								httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "SSL/TLS is required for Basic Authentication");
+								return;
+							}
+							
 							// remove the leading "Basic "
 							basicAuth = basicAuth.substring(6);
 							if (StringUtils.isBlank(basicAuth)) {

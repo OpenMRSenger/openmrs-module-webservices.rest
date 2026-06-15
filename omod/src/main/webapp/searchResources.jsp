@@ -12,12 +12,12 @@
 <c:forEach var="resource" items="${searchHandlersData}">
 	
 <h3>
-  ${resource.resourceName} 
+  <c:out value="${resource.resourceName}" escapeXml="true" /> 
 </h3>
       
      <ul>
 		<li>
-		   <b><spring:message code="webservices.rest.help.url"/>: </b> ${resource.resourceURL}
+		   <b><spring:message code="webservices.rest.help.url"/>: </b> <c:out value="${resource.resourceURL}" escapeXml="true" />
 		</li>
 		<li>
 		  OpenMRS versions: 
@@ -26,7 +26,7 @@
 
                     
 		            <c:set value="${status.count}" var="size"></c:set>
-		             ${ver}
+		             <c:out value="${ver}" escapeXml="true" />
 		            <c:if test="${ status.index != size - 1 }"> ,</c:if>
 		  </c:forEach>
 		</li>
@@ -44,16 +44,16 @@
 	                 <tr>
 	                   <td>
 	                     <c:forEach var="requiredParameter" items="${searchQuery.requiredParameters}">
-	                               ${requiredParameter}<br>
+	                               <c:out value="${requiredParameter}" escapeXml="true" /><br>
 	                     </c:forEach>
 	                   </td>
 	                   	<td>
 	                   	 <c:forEach var="optionalParameter" items="${searchQuery.optionalParameters}">
-	                              ${optionalParameter}<br>
+	                              <c:out value="${optionalParameter}" escapeXml="true" /><br>
 	                     </c:forEach>
 	                   </td>
 	                    <td>
-	                    ${searchQuery.description}
+	                    <c:out value="${searchQuery.description}" escapeXml="true" />
 	                   </td>
 	                  </tr>
 	               </table>
