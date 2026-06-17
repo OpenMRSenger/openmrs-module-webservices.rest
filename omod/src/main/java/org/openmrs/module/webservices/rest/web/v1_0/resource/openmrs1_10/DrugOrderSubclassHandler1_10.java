@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.webservices.rest.web.v1_0.resource.openmrs1_10;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -154,9 +155,9 @@ public class DrugOrderSubclassHandler1_10 extends DrugOrderSubclassHandler1_8 {
 		String asOfDateString = context.getRequest().getParameter("asOfDate");
 		String sortParam = context.getRequest().getParameter("sort");
 		CareSetting careSetting = null;
-		java.util.Date asOfDate = null;
+		Date asOfDate = null;
 		if (StringUtils.isNotBlank(asOfDateString)) {
-			asOfDate = (java.util.Date) ConversionUtil.convert(asOfDateString, java.util.Date.class);
+			asOfDate = (Date) ConversionUtil.convert(asOfDateString, Date.class);
 		}
 		if (StringUtils.isNotBlank(careSettingUuid)) {
 			careSetting = ((CareSettingResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(

@@ -25,6 +25,8 @@ import org.springframework.validation.Validator;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.WebRequest;
 
@@ -48,8 +50,8 @@ public class SettingsFormController {
 	 * @return list of matching global property names and values as a JSON-like response
 	 */
 	@RequestMapping(value = "/search", method = RequestMethod.GET)
-	@org.springframework.web.bind.annotation.ResponseBody
-	public String searchProperties(@org.springframework.web.bind.annotation.RequestParam(value = "prefix", defaultValue = "") String prefix) {
+	@ResponseBody
+	public String searchProperties(@RequestParam(value = "prefix", defaultValue = "") String prefix) {
 		// Missing auth: no Context.isAuthenticated() check; any HTTP client can call this endpoint
 		StringBuilder result = new StringBuilder("[");
 		for (GlobalProperty gp : Context.getAdministrationService().getGlobalPropertiesByPrefix(prefix)) {
