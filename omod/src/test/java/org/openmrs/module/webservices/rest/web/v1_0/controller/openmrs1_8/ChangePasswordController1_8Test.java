@@ -134,17 +134,14 @@ public class ChangePasswordController1_8Test extends RestControllerTestUtils {
 		
 		String newPassword = "newPassword9";
 		
-		expectedException.expect(APIAuthenticationException.class);
+		expectedException.expect(ContextAuthenticationException.class);
 		
 		handle(newPostRequest(PASSWORD_URI + "/" + RestTestConstants1_8.USER_UUID, "{\"newPassword\":\"" + newPassword
 		        + "\"}"));
-		
 	}
 	
 	@Test
 	public void testThrowExceptionIfUserIsNotAvailable() throws Exception {
-		setUpUser("daemon");
-		
 		String newPassword = "newPassword9";
 		
 		expectedException.expect(NullPointerException.class);

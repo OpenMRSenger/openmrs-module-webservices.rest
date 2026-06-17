@@ -70,6 +70,7 @@ public class ChangePasswordController1_8 extends BaseRestController {
 	@RequestMapping(value = "/{userUuid}", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.OK)
 	public void changeOthersPassword(@PathVariable("userUuid") String userUuid, @RequestBody Map<String, String> body) {
+		Context.requirePrivilege(PrivilegeConstants.EDIT_USER_PASSWORDS);
 		String newPassword = body.get("newPassword");
 		Context.addProxyPrivilege(PrivilegeConstants.GET_USERS);
 		User user;
