@@ -173,35 +173,12 @@ public class TestOrderSubclassHandler1_10 extends BaseDelegatingSubclassHandler<
 	}
 	
 	public PageableResult getActiveOrders(Patient patient, RequestContext context) {
-		String careSettingUuid = context.getRequest().getParameter("careSetting");
-		String asOfDateString = context.getRequest().getParameter("asOfDate");
-		String sortParam = context.getRequest().getParameter("sort");
-		CareSetting careSetting = null;
-		Date asOfDate = null;
-		if (StringUtils.isNotBlank(asOfDateString)) {
-			asOfDate = (Date) ConversionUtil.convert(asOfDateString, Date.class);
-		}
-		if (StringUtils.isNotBlank(careSettingUuid)) {
-			careSetting = ((CareSettingResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(
-			    CareSetting.class)).getByUniqueId(careSettingUuid);
-		}
-		
-		String status = context.getRequest().getParameter("status");
 		OrderService os = Context.getOrderService();
 		OrderType orderType = os.getOrderTypeByName("Test order");
-		List<Order> testOrders = OrderUtil.getOrders(patient, careSetting, orderType, status, asOfDate,
-		    context.getIncludeAll());
 		OrderResource1_10 orderResource = (OrderResource1_10) Context.getService(RestService.class)
 		        .getResourceBySupportedClass(Order.class);
 		
-		if (StringUtils.isNotBlank(sortParam)) {
-			List<Order> sortedOrder = orderResource.sortOrdersBasedOnDateActivatedOrDateStopped(testOrders, sortParam,
-			    status);
-			return new NeedsPaging<Order>(sortedOrder, context);
-		}
-		else {
-			return new NeedsPaging<Order>(testOrders, context);
-		}
+		return orderResource.getOrders(patient, orderType, context);
 	}
 	
 	/**

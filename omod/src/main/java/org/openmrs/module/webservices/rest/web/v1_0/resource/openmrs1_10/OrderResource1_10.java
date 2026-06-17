@@ -235,24 +235,8 @@ public class OrderResource1_10 extends OrderResource1_8 {
 				}
 			}
 			
-			String careSettingUuid = context.getRequest().getParameter("careSetting");
-			String asOfDateString = context.getRequest().getParameter("asOfDate");
 			String orderTypeUuid = context.getRequest().getParameter("orderType");
-			String sortParam = context.getRequest().getParameter("sort");
-			
-			CareSetting careSetting = null;
-			Date asOfDate = null;
 			OrderType orderType = null;
-			if (StringUtils.isNotBlank(asOfDateString)) {
-				asOfDate = (Date) ConversionUtil.convert(asOfDateString, Date.class);
-			}
-			if (StringUtils.isNotBlank(careSettingUuid)) {
-				careSetting = ((CareSettingResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(
-				    CareSetting.class)).getByUniqueId(careSettingUuid);
-				if (careSetting == null) {
-					throw new ObjectNotFoundException();
-				}
-			}
 			if (StringUtils.isNotBlank(orderTypeUuid)) {
 				orderType = ((OrderTypeResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(
 				    OrderType.class)).getByUniqueId(orderTypeUuid);
@@ -261,25 +245,45 @@ public class OrderResource1_10 extends OrderResource1_8 {
 				}
 			}
 			
-			String status = context.getRequest().getParameter("status");
-			List<Order> orders = OrderUtil.getOrders(patient, careSetting, orderType, status, asOfDate,
-			    context.getIncludeAll());
-			// if the user indicated a specific type, and we couldn't delegate to a subclass handler above, filter here
-			if (context.getType() != null) {
-				filterByType(orders, context.getType());
-			}
-			
-			if (StringUtils.isNotBlank(sortParam)) {
-				List<Order> sortedOrder = sortOrdersBasedOnDateActivatedOrDateStopped(orders, sortParam, status);
-				return new NeedsPaging<Order>(sortedOrder, context);
-			}
-			else {
-				return new NeedsPaging<Order>(orders, context);
-			}
+			return getOrders(patient, orderType, context);
 		} else {
 			throw new InvalidSearchException("Please provide patientUuid in the patient parameter");
 		}
 
+	}
+	
+	public PageableResult getOrders(Patient patient, OrderType orderType, RequestContext context) {
+		String careSettingUuid = context.getRequest().getParameter("careSetting");
+		String asOfDateString = context.getRequest().getParameter("asOfDate");
+		String sortParam = context.getRequest().getParameter("sort");
+		CareSetting careSetting = null;
+		Date asOfDate = null;
+		if (StringUtils.isNotBlank(asOfDateString)) {
+			asOfDate = (Date) ConversionUtil.convert(asOfDateString, Date.class);
+		}
+		if (StringUtils.isNotBlank(careSettingUuid)) {
+			careSetting = ((CareSettingResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(
+			    CareSetting.class)).getByUniqueId(careSettingUuid);
+			if (careSetting == null) {
+				throw new ObjectNotFoundException();
+			}
+		}
+		
+		String status = context.getRequest().getParameter("status");
+		List<Order> orders = OrderUtil.getOrders(patient, careSetting, orderType, status, asOfDate,
+		    context.getIncludeAll());
+		
+		if (context.getType() != null) {
+			filterByType(orders, context.getType());
+		}
+		
+		if (StringUtils.isNotBlank(sortParam)) {
+			List<Order> sortedOrder = sortOrdersBasedOnDateActivatedOrDateStopped(orders, sortParam, status);
+			return new NeedsPaging<Order>(sortedOrder, context);
+		}
+		else {
+			return new NeedsPaging<Order>(orders, context);
+		}
 	}
 	
 	private static Date getUsableDate(Order order) {
