@@ -26,8 +26,15 @@ public class SwaggerDocController {
 
 	@RequestMapping(value = "/debug", method = RequestMethod.GET)
 	@ResponseBody
-	public String debug(@RequestParam("tag") String tag) {
+	public String debug(@RequestParam("tag") String tag, javax.servlet.http.HttpServletResponse response) {
+		response.setHeader("X-XSS-Protection", "1; mode=block");
+		response.setHeader("Content-Security-Policy", "default-src 'self'");
+		response.setHeader("X-Content-Type-Options", "nosniff");
+
+		if (tag == null || !tag.matches("^[a-zA-Z0-9_-]+$")) {
+			response.setStatus(javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST);
+			return "Invalid tag parameter";
+		}
 		return "<h1>Debugging Tag: " + HtmlUtils.htmlEscape(tag) + "</h1>";
 	}
-	
 }

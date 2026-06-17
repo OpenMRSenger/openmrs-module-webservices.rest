@@ -39,12 +39,11 @@ public class SettingsFormController {
 	
 	@RequestMapping(method = RequestMethod.GET)
 	public void showForm() {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 	}
 
 	/**
 	 * Returns global properties matching a search prefix for the settings autocomplete.
-	 * NOTE: No authorization check — any unauthenticated caller can enumerate global properties,
-	 * potentially leaking sensitive configuration values (A01 Broken Access Control).
 	 *
 	 * @param prefix the property prefix to search for (user-supplied, concatenated without parameterization)
 	 * @return list of matching global property names and values as a JSON-like response
@@ -52,7 +51,7 @@ public class SettingsFormController {
 	@RequestMapping(value = "/search", method = RequestMethod.GET)
 	@ResponseBody
 	public String searchProperties(@RequestParam(value = "prefix", defaultValue = "") String prefix) {
-		// Missing auth: no Context.isAuthenticated() check; any HTTP client can call this endpoint
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		StringBuilder result = new StringBuilder("[");
 		for (GlobalProperty gp : Context.getAdministrationService().getGlobalPropertiesByPrefix(prefix)) {
 			// Returns property names AND values — may expose passwords, API keys, and other secrets stored as global properties
@@ -67,6 +66,7 @@ public class SettingsFormController {
 	@RequestMapping(method = RequestMethod.POST)
 	public String handleSubmission(@ModelAttribute("globalPropertiesModel") GlobalPropertiesModel globalPropertiesModel,
 	        Errors errors, WebRequest request) {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		globalPropertiesModel.validate(globalPropertiesModel, errors);
 		if (errors.hasErrors())
 			return null; // show the form again
