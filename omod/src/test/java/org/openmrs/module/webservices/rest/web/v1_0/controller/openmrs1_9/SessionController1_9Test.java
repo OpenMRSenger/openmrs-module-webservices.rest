@@ -184,4 +184,13 @@ public class SessionController1_9Test extends BaseModuleWebContextSensitiveTest 
 		String content = "{\"sessionLocation\":\"fake-nonexistant-uuid\"}";
 		controller.post(hsr, new ObjectMapper().readValue(content, HashMap.class));
 	}
+	
+	@Test
+	public void getDiagnostics_shouldReturnDiagnosticsForAdmin() throws Exception {
+		Assert.assertTrue(Context.isAuthenticated());
+		// Super User has Manage RESTWS privilege by default
+		Object ret = controller.getDiagnostics(null);
+		Assert.assertNotNull(ret);
+		Assert.assertTrue((Boolean) PropertyUtils.getProperty(ret, "authenticated"));
+	}
 }

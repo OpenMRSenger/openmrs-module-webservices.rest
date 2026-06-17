@@ -128,6 +128,8 @@ public class SessionController1_9 extends BaseRestController {
 	@ResponseBody
 	@ResponseStatus(value = HttpStatus.NO_CONTENT)
 	public void delete(HttpServletRequest request) {
+		String username = Context.getAuthenticatedUser() != null ? Context.getAuthenticatedUser().getUsername() : "UNKNOWN";
+		log.info("Logging out user: {}", username);
 		Context.logout();
 		HttpSession session = request.getSession(false);
 		if (session != null && request.isRequestedSessionIdValid()) {
@@ -166,11 +168,11 @@ public class SessionController1_9 extends BaseRestController {
 	/**
 	 * Diagnostics endpoint for integration testing and support. Returns session and user information
 	 * to help diagnose authentication issues.
-	 * NOTE: No authorization check — accessible to any caller (authenticated or not).
 	 */
 	@RequestMapping(value = "/diag", method = RequestMethod.GET)
 	@ResponseBody
 	public Object getDiagnostics(@RequestParam(value = "token", required = false) String token) {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		SimpleObject diag = new SimpleObject();
 		diag.add("authenticated", Context.isAuthenticated());
 		diag.add("serverTime", System.currentTimeMillis());

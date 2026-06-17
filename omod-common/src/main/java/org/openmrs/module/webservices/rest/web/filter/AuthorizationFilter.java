@@ -41,6 +41,8 @@ public class AuthorizationFilter implements Filter {
 	
 	private static final Logger log = LoggerFactory.getLogger(AuthorizationFilter.class);
 	
+	private static final Logger auditLog = LoggerFactory.getLogger("REST_AUDIT_LOGGER");
+	
 	/**
 	 * @see javax.servlet.Filter#init(javax.servlet.FilterConfig)
 	 */
@@ -74,6 +76,7 @@ public class AuthorizationFilter implements Filter {
 		
 		// check the IP address first.  If its not valid, return a 403
 		if (!RestUtil.isIpAllowed(ipAddress)) {
+			auditLog.warn("IP access denied: {}", ipAddress);
 			// the ip address is not valid, set a 403 http error code
 			HttpServletResponse httpresponse = (HttpServletResponse) response;
 			httpresponse.sendError(HttpServletResponse.SC_FORBIDDEN,
@@ -119,8 +122,14 @@ public class AuthorizationFilter implements Filter {
 							}
 							
 							String[] userAndPass = decoded.split(":");
-							Context.authenticate(userAndPass[0], userAndPass[1]);
-							log.debug("authenticated [{}]", userAndPass[0]);
+							try {
+								Context.authenticate(userAndPass[0], userAndPass[1]);
+								log.debug("authenticated [{}]", userAndPass[0]);
+							}
+							catch (Exception ex) {
+								auditLog.warn("Authentication failed for user '{}' from IP {}", userAndPass[0], ipAddress);
+								throw ex;
+							}
 						}
 						catch (Exception ex) {
 							// This filter never stops execution. If the user failed to
