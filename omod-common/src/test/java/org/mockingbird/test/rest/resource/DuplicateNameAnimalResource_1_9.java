@@ -12,6 +12,7 @@ package org.mockingbird.test.rest.resource;
 import org.mockingbird.test.Animal;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
+import org.openmrs.module.webservices.rest.web.annotation.Resource;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
@@ -25,7 +26,7 @@ import org.openmrs.module.webservices.rest.web.response.ResponseException;
  * package not under org.openmrs.xxx on purpose otherwise it will be picked up by other tests due to
  * {@link org.openmrs.module.webservices.rest.web.OpenmrsClassScanner} and its classpath pattern.
  */
-@org.openmrs.module.webservices.rest.web.annotation.Resource(name = RestConstants.VERSION_1 + "/animal", order = 2, supportedClass = Animal.class, supportedOpenmrsVersions = { "1.9.*" })
+@Resource(name = RestConstants.VERSION_1 + "/animal", order = 2, supportedClass = Animal.class, supportedOpenmrsVersions = { "1.9.*" })
 public class DuplicateNameAnimalResource_1_9 extends DelegatingCrudResource<Animal> {
 	
 	/**

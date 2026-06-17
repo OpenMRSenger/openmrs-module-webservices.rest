@@ -31,6 +31,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -169,7 +170,7 @@ public class SessionController1_9 extends BaseRestController {
 	 */
 	@RequestMapping(value = "/diag", method = RequestMethod.GET)
 	@ResponseBody
-	public Object getDiagnostics(@org.springframework.web.bind.annotation.RequestParam(value = "token", required = false) String token) {
+	public Object getDiagnostics(@RequestParam(value = "token", required = false) String token) {
 		SimpleObject diag = new SimpleObject();
 		diag.add("authenticated", Context.isAuthenticated());
 		diag.add("serverTime", System.currentTimeMillis());
