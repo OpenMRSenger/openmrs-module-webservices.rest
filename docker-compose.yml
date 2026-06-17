@@ -1,0 +1,47 @@
+# Default / "normal" environment for local development.
+#   docker compose up -d --build
+# Reads variables from .env.dev (see .env.example for documentation).
+name: webservices-rest-dev
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    env_file: .env.dev
+    environment:
+      MARIADB_DATABASE: ${OMRS_DB_NAME}
+      MARIADB_USER: ${OMRS_DB_USERNAME}
+      MARIADB_PASSWORD: ${OMRS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${OMRS_DB_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=96M
+    volumes:
+      - db-data:/var/lib/mysql
+    ports:
+      - "${OMRS_DB_HOST_PORT}:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  openmrs:
+    build:
+      context: .
+      args:
+        OPENMRS_CORE_TAG: ${OPENMRS_CORE_TAG}
+    restart: unless-stopped
+    env_file: .env.dev
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${OMRS_WEB_PORT}:8080"
+    volumes:
+      - openmrs-data:/openmrs/data
+
+volumes:
+  db-data:
+  openmrs-data:
