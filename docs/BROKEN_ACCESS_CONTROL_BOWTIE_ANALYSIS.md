@@ -2,7 +2,13 @@
 
 ## Vulnerability Overview
 
-**Top Event**: Broken Access Control
+**Hazard**: Management of user privileges and resource ownership within a clinical Web API handling sensitive patient health records.
+
+**Top Event**: Broken Access Control - Multiple authorization flaws allowing users to bypass privilege checks.
+
+| Top Event / Hazard | Inherent Likelihood | Inherent Impact | Overall Severity |
+|---|---|---|---|
+| **Broken Access Control** | High | Extreme | **Critical** |
 
 ---
 
@@ -10,12 +16,27 @@
 
 | **CAUSES (Threats - Left)** | **PREVENTIONS (Left Barriers - CRITICAL)** | **TOP EVENT** | **CONSEQUENCES (Right Impact)** | **MITIGATIONS (Right Barriers - CRITICAL)** |
 |---|---|---|---|---|
-| **Missing Privilege Enforcement** | **[L1-CODE]** @RequiresPrivilege annotations on all resources<br>**[L2-REVIEW]** Mandatory security code reviews<br>**[L3-FRAMEWORK]** Framework-enforced authorization checks<br>**[L4-INFRA]** Fine-grained privilege database constraints | **Broken Access Control - Multiple authorization flaws allowing users to bypass privilege checks** | **Unauthorized data exposure** - Medical records accessed by non-authorized staff | **[L1-OUTPUT]** Role-based filtering on all responses<br>**[L2-MONITOR]** Access pattern monitoring & anomaly detection<br>**[L3-AUDIT]** Immutable audit logs of access<br>**[L4-INCIDENT]** Breach response & notification protocol |
-| **No Ownership Validation** | **[L1-CODE]** Ownership checks in all CRUD operations<br>**[L2-REVIEW]** Unit tests verifying ownership enforcement<br>**[L3-FRAMEWORK]** @PreExecute hook validating resource owner | | **Privilege escalation to Admin** - Full system breach | **[L1-OUTPUT]** Response filtering by ownership<br>**[L3-AUDIT]** Log all ownership validation attempts<br>**[L4-INCIDENT]** Immediate access revocation procedures<br>**[L2-MONITOR]** Detect anomalous user role changes |
-| **Unfiltered Search Results** | **[L1-CODE]** Privilege filter in base search repository<br>**[L2-REVIEW]** Code linting rules enforcing filters<br>**[L3-FRAMEWORK]** Query interceptors adding privilege predicates<br>**[L4-INFRA]** Database row-level security (RLS) constraints | | **Patient record tampering** - Allergies/meds modified → wrong treatment given | **[L1-OUTPUT]** Verify search results against user privileges<br>**[L3-AUDIT]** Track all search queries & accessed records<br>**[L2-MONITOR]** Detect bulk searches, unusual result set sizes |
-| **No Audit Immutability** | **[L1-CODE]** Append-only audit table design<br>**[L4-INFRA]** Database constraints preventing DELETE on audit | | **Mass data exfiltration** - Entire patient database downloaded | **[L3-AUDIT]** Cryptographic signatures on audit entries<br>**[L2-MONITOR]** Alert on DELETE attempts against audit table<br>**[L1-OUTPUT]** Backup & recovery capability<br>**[L4-INCIDENT]** Data breach forensics & restoration |
-| **Missing Sub-Resource Checks** | **[L1-CODE]** Parent resource ownership validation before child access<br>**[L3-FRAMEWORK]** @PreExecute hook for nested resource checks | | **Audit trail destruction** - Evidence erased → compliance violation | **[L3-AUDIT]** Write-once audit logs with signatures<br>**[L2-MONITOR]** Detect audit deletion attempts |
-| **Unprotected Admin Ops** | **[L1-CODE]** Explicit @RequiresPrivilege(DELETE/PURGE) annotations<br>**[L3-FRAMEWORK]** Framework-level privilege enforcement<br>**[L4-INFRA]** Multi-approval workflow for destructive ops<br>**[L2-REVIEW]** Security review of all admin operations | | **Cross-patient data leaks** - One patient accesses another's records | **[L1-OUTPUT]** Verify admin operations are scoped correctly<br>**[L3-AUDIT]** Log all DELETE/PURGE operations with context<br>**[L2-MONITOR]** Alert on unusual admin activity<br>**[L4-NOTIFY]** Notify affected patients of access incidents |
+| **Missing Privilege Enforcement**<br>• *Likelihood (Inherent): High*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** @RequiresPrivilege annotations on all resources<br>**[L2-REVIEW]** Mandatory security code reviews<br>**[L3-FRAMEWORK]** Framework-enforced authorization checks<br>**[L4-INFRA]** Fine-grained privilege database constraints | **Broken Access Control - Multiple authorization flaws allowing users to bypass privilege checks** | **Unauthorized data exposure** - Medical records accessed by non-authorized staff<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L1-OUTPUT]** Role-based filtering on all responses<br>**[L2-MONITOR]** Access pattern monitoring & anomaly detection<br>**[L3-AUDIT]** Immutable audit logs of access<br>**[L4-INCIDENT]** Breach response & notification protocol |
+| **No Ownership Validation**<br>• *Likelihood (Inherent): High*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** Ownership checks in all CRUD operations<br>**[L2-REVIEW]** Unit tests verifying ownership enforcement<br>**[L3-FRAMEWORK]** @PreExecute hook validating resource owner | | **Privilege escalation to Admin** - Full system breach<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L1-OUTPUT]** Response filtering by ownership<br>**[L3-AUDIT]** Log all ownership validation attempts<br>**[L4-INCIDENT]** Immediate access revocation procedures<br>**[L2-MONITOR]** Detect anomalous user role changes |
+| **Unfiltered Search Results**<br>• *Likelihood (Inherent): High*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** Privilege filter in base search repository<br>**[L2-REVIEW]** Code linting rules enforcing filters<br>**[L3-FRAMEWORK]** Query interceptors adding privilege predicates<br>**[L4-INFRA]** Database row-level security (RLS) constraints | | **Patient record tampering** - Allergies/meds modified → wrong treatment given<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L1-OUTPUT]** Verify search results against user privileges<br>**[L3-AUDIT]** Track all search queries & accessed records<br>**[L2-MONITOR]** Detect bulk searches, unusual result set sizes |
+| **No Audit Immutability**<br>• *Likelihood (Inherent): Medium*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** Append-only audit table design<br>**[L4-INFRA]** Database constraints preventing DELETE on audit | | **Mass data exfiltration** - Entire patient database downloaded<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L3-AUDIT]** Cryptographic signatures on audit entries<br>**[L2-MONITOR]** Alert on DELETE attempts against audit table<br>**[L1-OUTPUT]** Backup & recovery capability<br>**[L4-INCIDENT]** Data breach forensics & restoration |
+| **Missing Sub-Resource Checks**<br>• *Likelihood (Inherent): Medium*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** Parent resource ownership validation before child access<br>**[L3-FRAMEWORK]** @PreExecute hook for nested resource checks | | **Audit trail destruction** - Evidence erased → compliance violation<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L3-AUDIT]** Write-once audit logs with signatures<br>**[L2-MONITOR]** Detect audit deletion attempts |
+| **Unprotected Admin Ops**<br>• *Likelihood (Inherent): High*<br>• *Likelihood (Residual): Low* | **[L1-CODE]** Explicit @RequiresPrivilege(DELETE/PURGE) annotations<br>**[L3-FRAMEWORK]** Framework-level privilege enforcement<br>**[L4-INFRA]** Multi-approval workflow for destructive ops<br>**[L2-REVIEW]** Security review of all admin operations | | **Cross-patient data leaks** - One patient accesses another's records<br>• *Impact (Inherent): Critical*<br>• *Impact (Residual): Low* | **[L1-OUTPUT]** Verify admin operations are scoped correctly<br>**[L3-AUDIT]** Log all DELETE/PURGE operations with context<br>**[L2-MONITOR]** Alert on unusual admin activity<br>**[L4-NOTIFY]** Notify affected patients of access incidents |
+
+---
+
+## Threats & Likelihood Analysis (Left Side)
+
+This table analyzes the likelihood of the threats that can trigger broken access control, showing both inherent risk (without barriers) and residual risk (with prevention barriers active).
+
+| Threat (Cause) | Inherent Likelihood | Residual Likelihood | Prevention Effectiveness | Key Prevention Barrier |
+|---|---|---|---|---|
+| **Missing Privilege Enforcement** | High | Low | High | Framework-enforced `@RequiresPrivilege` authorization checks |
+| **No Ownership Validation** | High | Low | High | Code ownership checks and `@PreExecute` validation hooks |
+| **Unfiltered Search Results** | High | Low | High | Database row-level security (RLS) & search repo filters |
+| **No Audit Immutability** | Medium | Low | High | Append-only database constraints & trigger restrictions |
+| **Missing Sub-Resource Checks** | Medium | Low | High | Parent-resource validation prior to child-resource resolution |
+| **Unprotected Admin Ops** | High | Low | High | Multi-approval validation flows and admin privilege gates |
 
 ---
 
@@ -31,16 +52,18 @@
 
 ---
 
-## Consequences Analysis
+## Consequences Analysis (Right Side)
 
-| Consequence | Risk Level | HIPAA Impact | GDPR Impact |
-|---|---|---|---|
-| Unauthorized data exposure | **Critical** | HIPAA Breach | GDPR Right to Privacy Violation |
-| Privilege escalation to Admin | **Critical** | Complete Compliance Failure | Personal Data Processing Breach |
-| Patient record tampering | **Critical** | Care Delivery Risk + Breach | Data Integrity Violation |
-| Mass data exfiltration | **Critical** | Large-Scale Breach | Article 33 Notification Required |
-| Audit trail destruction | **Critical** | Non-Repudiation Failure | Accountability Violation |
-| Cross-patient data leaks | **Critical** | Multi-Patient Breach | Unlawful Processing |
+This table analyzes the impact of the consequences resulting from broken access control, showing both inherent impact (without barriers) and residual impact (with mitigation barriers active).
+
+| Consequence | Inherent Impact | Residual Impact | Risk Level | HIPAA Impact | GDPR Impact |
+|---|---|---|---|---|---|
+| **Unauthorized data exposure** | Critical | Low | **Critical** | HIPAA Breach | GDPR Right to Privacy Violation |
+| **Privilege escalation to Admin** | Critical | Low | **Critical** | Complete Compliance Failure | Personal Data Processing Breach |
+| **Patient record tampering** | Critical | Low | **Critical** | Care Delivery Risk + Breach | Data Integrity Violation |
+| **Mass data exfiltration** | Critical | Low | **Critical** | Large-Scale Breach | Article 33 Notification Required |
+| **Audit trail destruction** | Critical | Low | **Critical** | Non-Repudiation Failure | Accountability Violation |
+| **Cross-patient data leaks** | Critical | Low | **Critical** | Multi-Patient Breach | Unlawful Processing |
 
 ---
 
@@ -67,6 +90,8 @@ This section maps each defense layer with specific identifiers. Defense in depth
 | **L3-AUDIT** | Audit Logging & Immutability | Detective | All (especially Audit Destruction) | Write-once audit logs, track all access/modifications, cryptographic signatures, tamper detection | Immediate (immutable record) |
 | **L4-INCIDENT** | Incident Response | Corrective | All consequences | Detect privilege escalation, contain unauthorized access, revoke compromised credentials | Minutes to hours |
 | **L4-NOTIFY** | User Communication | Corrective | Cross-patient leaks, Reputation damage | Breach notification, affected patient alerts, regulatory reporting | Hours to days |
+
+---
 
 ### Defense-in-Depth Strategy by Threat
 
@@ -152,6 +177,8 @@ This section maps each defense layer with specific identifiers. Defense in depth
 2. **L3-AUDIT:** Log all DELETE/PURGE with context (who, what, when, why) *(CRITICAL)*
 3. **L2-MONITOR:** Alert on unusual DELETE/PURGE patterns *(CRITICAL)*
 4. **L4-NOTIFY:** Trace DELETE/PURGE impact; notify affected patients *(CRITICAL)*
+
+---
 
 ### Cross-Layer Attack Scenario: Privilege Escalation Attempt
 
