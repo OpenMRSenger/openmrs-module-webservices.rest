@@ -13,8 +13,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.openmrs.util.OpenmrsClassLoader;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -30,23 +30,20 @@ import org.springframework.core.type.filter.TypeFilter;
  */
 public class OpenmrsClassScanner implements ApplicationContextAware {
 	
-	protected final Log log = LogFactory.getLog(getClass());
-	
-	private static final OpenmrsClassScanner instance = new OpenmrsClassScanner();
+	private static final Logger log = LoggerFactory.getLogger(OpenmrsClassScanner.class);
 
 	private ApplicationContext applicationContext;
 
 	private MetadataReaderFactory metadataReaderFactory;
+	
+	private String pattern = "classpath*:org/openmrs/**/*.class";
 
-	OpenmrsClassScanner() {
+	public String getPattern() {
+		return pattern;
 	}
-	
-	/**
-	 * @return the instance
-	 */
-	
-	public static OpenmrsClassScanner getInstance() {
-		return instance;
+
+	public void setPattern(String pattern) {
+		this.pattern = pattern;
 	}
 
 	@Override
@@ -68,8 +65,6 @@ public class OpenmrsClassScanner implements ApplicationContextAware {
 	public <T> List<Class<? extends T>> getClasses(Class<? extends T> type, boolean concrete) throws IOException {
 		
 		List<Class<? extends T>> types = new ArrayList<Class<? extends T>>();
-		
-		String pattern = "classpath*:org/openmrs/**/*.class";
 		
 		Resource[] resources = applicationContext.getResources(pattern);
 		
@@ -98,7 +93,7 @@ public class OpenmrsClassScanner implements ApplicationContextAware {
 					
 					catch (ClassNotFoundException e) {
 						
-						throw new IOException("Class cannot be loaded: " + classname, e);
+						throw new IllegalStateException("Class cannot be loaded: " + classname, e);
 						
 					}
 
@@ -109,7 +104,7 @@ public class OpenmrsClassScanner implements ApplicationContextAware {
 			
 			catch (IOException e) {
 				
-				log.debug("Resource cannot be loaded: " + resource);
+				log.debug("Resource cannot be loaded: {}", resource);
 				
 			}
 			
