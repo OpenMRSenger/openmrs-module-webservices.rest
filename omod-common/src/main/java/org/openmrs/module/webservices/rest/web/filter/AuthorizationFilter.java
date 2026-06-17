@@ -113,7 +113,6 @@ public class AuthorizationFilter implements Filter {
 							// Enforce SSL/TLS for Basic Auth to prevent cleartext credentials leakage
 							boolean isSecure = httpRequest.isSecure() || "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
 							if (!isSecure) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "SSL/TLS is required for Basic Authentication");
 								return;
 							}
@@ -121,14 +120,12 @@ public class AuthorizationFilter implements Filter {
 							// remove the leading "Basic "
 							basicAuth = basicAuth.substring(6);
 							if (StringUtils.isBlank(basicAuth)) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
 								return;
 							}
 							
 							String decoded = new String(Base64.decodeBase64(basicAuth), Charset.forName("UTF-8"));
 							if (StringUtils.isBlank(decoded) || !decoded.contains(":")) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
 								return;
 							}
