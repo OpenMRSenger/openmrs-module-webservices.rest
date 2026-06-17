@@ -74,13 +74,13 @@ public class AuthorizationFilter implements Filter {
 			ipAddress = request.getRemoteAddr();
 		}
 		
+		HttpServletResponse httpResponse = (HttpServletResponse) response;
+		
 		// check the IP address first.  If its not valid, return a 403
 		if (!RestUtil.isIpAllowed(ipAddress)) {
 			auditLog.warn("IP access denied: {}", ipAddress);
 			// the ip address is not valid, set a 403 http error code
-			HttpServletResponse httpresponse = (HttpServletResponse) response;
-			httpresponse.sendError(HttpServletResponse.SC_FORBIDDEN,
-			    "IP address '" + ipAddress + "' is not authorized");
+			httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "IP address '" + ipAddress + "' is not authorized");
 			return;
 		}
 		
@@ -88,54 +88,14 @@ public class AuthorizationFilter implements Filter {
 		if (request instanceof HttpServletRequest) {
 			HttpServletRequest httpRequest = (HttpServletRequest) request;
 			if (httpRequest.getRequestedSessionId() != null && !httpRequest.isRequestedSessionIdValid()) {
-				HttpServletResponse httpResponse = (HttpServletResponse) response;
 				httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session timed out");
 			}
 			
 			if (!Context.isAuthenticated()) {
 				String basicAuth = httpRequest.getHeader("Authorization");
-				if (basicAuth != null) {
-					// check that header is in format "Basic ${base64encode(username + ":" + password)}"
-					if (basicAuth.startsWith("Basic")) {
-						try {
-							// Enforce SSL/TLS for Basic Auth to prevent cleartext credentials leakage
-							boolean isSecure = httpRequest.isSecure() || "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
-							if (!isSecure) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
-								httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "SSL/TLS is required for Basic Authentication");
-								return;
-							}
-							
-							// remove the leading "Basic "
-							basicAuth = basicAuth.substring(6);
-							if (StringUtils.isBlank(basicAuth)) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
-								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
-								return;
-							}
-							
-							String decoded = new String(Base64.decodeBase64(basicAuth), Charset.forName("UTF-8"));
-							if (StringUtils.isBlank(decoded) || !decoded.contains(":")) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
-								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
-								return;
-							}
-							
-							String[] userAndPass = decoded.split(":");
-							try {
-								Context.authenticate(userAndPass[0], userAndPass[1]);
-								log.debug("authenticated [{}]", userAndPass[0]);
-							}
-							catch (Exception ex) {
-								auditLog.warn("Authentication failed for user '{}' from IP {}", userAndPass[0], ipAddress);
-								throw ex;
-							}
-						}
-						catch (Exception ex) {
-							// This filter never stops execution. If the user failed to
-							// authenticate, that will be caught later.
-							log.debug("authentication exception ", ex);
-						}
+				if (basicAuth != null && basicAuth.startsWith("Basic")) {
+					if (!handleBasicAuth(httpRequest, httpResponse, basicAuth, ipAddress)) {
+						return;
 					}
 				}
 			}
@@ -143,5 +103,68 @@ public class AuthorizationFilter implements Filter {
 		
 		// continue with the filter chain (unless IP is not allowed)
 		chain.doFilter(request, response);
+	}
+	
+	/**
+	 * Handles the basic authentication process.
+	 * 
+	 * @param httpRequest the HttpServletRequest
+	 * @param httpResponse the HttpServletResponse
+	 * @param basicAuth the Authorization header value
+	 * @param ipAddress the client's IP address
+	 * @return true if the filter chain should continue, false if an error was sent
+	 * @throws IOException
+	 */
+	private boolean handleBasicAuth(HttpServletRequest httpRequest, HttpServletResponse httpResponse, String basicAuth,
+	        String ipAddress) throws IOException {
+		try {
+			// Enforce SSL/TLS for Basic Auth to prevent cleartext credentials leakage
+			boolean isSecure = httpRequest.isSecure()
+			        || "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
+			if (!isSecure) {
+				httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "SSL/TLS is required for Basic Authentication");
+				return false;
+			}
+			
+			// remove the leading "Basic "
+			basicAuth = basicAuth.substring(6);
+			if (StringUtils.isBlank(basicAuth)) {
+				httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
+				return false;
+			}
+			
+			String decoded = new String(Base64.decodeBase64(basicAuth), Charset.forName("UTF-8"));
+			if (StringUtils.isBlank(decoded) || !decoded.contains(":")) {
+				httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
+				return false;
+			}
+			
+			String[] userAndPass = decoded.split(":");
+			performAuthentication(userAndPass, ipAddress);
+		}
+		catch (Exception ex) {
+			// This filter never stops execution. If the user failed to
+			// authenticate, that will be caught later.
+			log.debug("authentication exception ", ex);
+		}
+		return true;
+	}
+	
+	/**
+	 * Performs the actual authentication against the Context.
+	 * 
+	 * @param userAndPass array containing username and password
+	 * @param ipAddress the client's IP address
+	 * @throws Exception if authentication fails
+	 */
+	private void performAuthentication(String[] userAndPass, String ipAddress) throws Exception {
+		try {
+			Context.authenticate(userAndPass[0], userAndPass[1]);
+			log.debug("authenticated [{}]", userAndPass[0]);
+		}
+		catch (Exception ex) {
+			auditLog.warn("Authentication failed for user '{}' from IP {}", userAndPass[0], ipAddress);
+			throw ex;
+		}
 	}
 }
