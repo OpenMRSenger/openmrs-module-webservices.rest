@@ -77,3 +77,4 @@ nb-configuration.xml
 
 ### Lucene Indices from Tests ###
 /omod-*/org.openmrs.*/*
+skills-lock.json
