@@ -11,8 +11,7 @@
   		    http://www.springframework.org/schema/context/spring-context-3.0.xsd">
 
 	<bean id="openmrsClassScanner"
-		  class="org.openmrs.module.webservices.rest.web.OpenmrsClassScanner"
-		factory-method="getInstance" >
+		  class="org.openmrs.module.webservices.rest.web.OpenmrsClassScanner">
 	</bean>
 
 	<bean id="restService"
