@@ -1,88 +1,133 @@
-# OpenMRS REST Module - Logging & Audit Security Analysis Report
+# OpenMRS REST Module - Logging & Audit Beveiligingsanalyse (NEN 7510-2:2024)
 
-## 1. Executive Summary
-This report analyzes the logging and audit capabilities of the `openmrs-module-webservices.rest` codebase. The focus is to evaluate logging practices against security, privacy, and compliance standards (NEN 7510:2024, GDPR, and HIPAA), specifically checking for immutability, format consistency, sensitive data exposure, and event coverage.
+## 1. Inleiding
+Dit document bevat de volledige inventarisatie, risicoanalyse en het mitigatieplan voor de logging- en auditfunctionaliteiten van de `openmrs-module-webservices.rest` module. Dit rapport is opgesteld conform de richtlijnen van **NEN 7510-2:2024 Control A.8.15 (Logging)**, de Algemene Verordening Gegevensbescherming (AVG/GDPR) en de HIPAA Security Rule.
 
----
-
-## 2. Analysis of the Logging Implementation
-
-### 2.1 Immutability & Persistence
-*   **Current Setup**: The module exposes a REST resource `/ws/rest/v1/serverlog` via `ServerLogResource1_8` and `ServerLogResource2_4`. This endpoint pulls from `MemoryAppender` in OpenMRS Core.
-*   **Gaps**:
-    1.  **Transient Storage**: In-memory logs (`MemoryAppender`) are lost upon JVM crash, restart, or module redeployment.
-    2.  **No Integrity Protection**: File logs stored locally on the server filesystem lack cryptographic signatures or write-once-read-many (WORM) constraints. An administrator or successful attacker with local privileges can modify or delete log files to erase trace evidence.
-    3.  **No Centralized Shipping**: There is no built-in capability in the module to forward audit logs to an external, isolated SIEM (Security Information and Event Management) or remote syslog server.
-*   **Impact**: Non-compliance with NEN 7510 Control A.12.4.2 (Log Protection) and A.12.4.3 (Administrator Logs).
-
-### 2.2 Format Consistency & Structural Reliability
-*   **Current Setup**: `ServerLogActionWrapper.java` parses log lines using a regular expression:
-    ```java
-    String regExPatternType = "(INFO|ERROR|WARN|DEBUG)\\s.*?[-].*?\\s((?:[A-Za-z][A-Za-z].+))\\s[|](.*?)[|]\\s((.*\\n*)+)";
-    ```
-*   **Gaps**:
-    1.  **Fragile Parser**: The parser expects logs to match a very specific textual pattern using pipes (`|`). If the logging layout configuration in OpenMRS Core is modified, the parser fails. It will either catch a `PatternSyntaxException` or return null array elements.
-    2.  **No Structured Logging**: Logs are produced as unstructured plain text. There is no machine-readable layout (e.g., JSON) representing log elements consistently.
-*   **Impact**: Parsing errors and incomplete log ingestion during automated security audits.
-
-### 2.3 Exposure of Sensitive & Unneeded Data
-*   **Current Setup**: `RestUtil.wrapErrorResponse` formats REST exceptions returned to users. `AuthorizationFilter.java` handles Basic Authentication.
-*   **Gaps**:
-    1.  **Internal Class Leakage**: The system exposes internal class names and code line numbers in the REST response body:
-        ```java
-        map.put("code", stackTraceElement.getClassName() + ":" + stackTraceElement.getLineNumber());
-        ```
-        This exposes internal logic paths to potential attackers (Information Disclosure - VULN-005).
-    2.  **Stack Trace Disclosure**: If `enableStackTraceDetails` is set to `true`, the full Java stack trace is returned in the API response under `detail`, leaking database schemas, query logic, and dependencies.
-    3.  **Credential Exfiltration Risk**: While `AuthorizationFilter` logs the username (`log.debug("authenticated [{}]", userAndPass[0]);`), it catches authentication exceptions and prints the stack trace (`log.debug("authentication exception ", ex)`). If exceptions (e.g., LDAP/DB connection failures) contain passwords or connection string credentials, they will be logged.
-*   **Impact**: Violation of least-privilege principles and GDPR/NEN 7510 requirements to protect sensitive operational data.
-
-### 2.4 Coverage & Audit Completeness
-*   **Current Setup**: The module logs standard lifecycle stages (e.g., filter initialization) and system actions (e.g., clearing database caches).
-*   **Gaps**:
-    1.  **No Access Audit Logging**: There is no audit logging indicating when medical records (e.g., Patients, Encounters, Observations) are read. Accessing patient data through REST GET requests is not logged by default.
-    2.  **Missing Security Actions**: Actions such as failed login attempts, IP blockings (from IP allow-list logic), and privilege checks are not systemically recorded in a dedicated audit log.
-*   **Impact**: Inability to construct a forensic trail of patient data access (Critical violation of NEN 7510 Control A.12.4.1 - Event Logging).
+Het doel van deze analyse is het in kaart brengen van tekortkomingen in de huidige logging-architectuur en het aandragen van direct toepasbare mitigatiemaatregelen en code-oplossingen om onweerlegbaarheid (immutability), consistentie, dataminimalisatie en volledige event-dekking te waarborgen.
 
 ---
 
-## 3. Recommendations & Remediation Plan
+## 2. Attack Surface & Event Audit Matrix
 
-```mermaid
-graph TD
-    A[Unstructured Transient Logs] -->|Remediation 1| B[Secure Centralized Audit Trail]
-    A -->|Remediation 2| C[Structured JSON Format]
-    A -->|Remediation 3| D[Data Redaction & Error Masking]
+Onderstaande matrix koppelt kritieke API-gebeurtenissen (events) aan het aanvalsoppervlak (attack surface) en specificeert de huidige logging-status, eventuele risico's op het lekken van gevoelige gegevens en de NEN 7510-compliance status.
+
+| Event / Endpoint | Attack Surface Context | Gelogd? | Gevoelige data in log? | Compliant met NEN-7510 A.8.15? |
+| :--- | :--- | :--- | :--- | :--- |
+| **Authenticatiepoging**<br>(Basic Auth via `AuthorizationFilter`) | Externe toegangspoort. Risico op brute-force en credential stuffing. | **Gedeeltelijk**<br>(Alleen op DEBUG-niveau via log4j/slf4j. Geen formele audit logs). | **Nee** (Wachtwoord zelf niet gelogd; wel risico bij debuggen exception traces). | **Nee**<br>(Mislukte inlogpogingen en lockouts moeten onweerlegbaar gelogd worden). |
+| **Sessie beëindigen**<br>(DELETE `/session`) | Sessiebeheer. Risico op session hijacking of openstaande sessies. | **Nee** | **Nee** | **Nee** |
+| **Inzien patiëntdossier**<br>(GET `/patient/{uuid}`) | Toegang tot Medische Gegevens (PHI). Risico op ongeautoriseerde data-inzage. | **Nee**<br>(Kritiek gat: dossierinzage wordt niet geregistreerd). | **Nee** (Bij debugging kan URL/query param PHI lekken). | **Nee**<br>(NEN 7510 vereist registratie van wie welk patiëntdossier heeft ingezien). |
+| **Wijzigen patiëntdossier**<br>(POST/PUT/DELETE `/patient`) | Integriteit van Medische Gegevens. Risico op ongeoorloofde wijzigingen. | **Gedeeltelijk**<br>(Via OpenMRS Core database audit, maar zonder REST/IP context). | **Nee** | **Nee**<br>(REST-sessie context en client IP ontbreken in de audit logs). |
+| **Wachtwoord wijzigen**<br>(POST `/changepassword`) | Privilegebeheer. Risico op Privilege Escalation en accountovername. | **Nee** | **Nee** (Wel risico op logging van parameters bij fouten). | **Nee**<br>(Wijzigingen in authenticatiemiddelen moeten altijd gelogd worden). |
+| **Diagnostische info opvragen**<br>(GET `/session/diag`) | Systeeminformatie-lek. Risico op verkenning door aanvallers (reconnaissance). | **Nee** | **Ja** (Lekt interne rollen en server-metadata in HTTP response). | **Nee** |
+| **Database cache legen**<br>(POST `/cleardbcache`) | Systeembeheer / Denial of Service. Risico op performance-degradatie. | **Gedeeltelijk**<br>(Alleen op DEBUG-niveau: "Clearing DB cache"). | **Nee** | **Nee**<br>(Beheerdershandelingen moeten onweerlegbaar gelogd worden). |
+| **IP Block / IP Allowlist Falen**<br>(Filter blokkeert IP) | Toegangscontrole. Risico op brute-force of bypass pogingen. | **Nee**<br>(Stuurt direct 403 Forbidden retour zonder server-log). | **Nee** (IP-adres zelf is metadata die gelogd moet worden). | **Nee**<br>(Beveiligingsincidenten en weigeringen moeten gelogd worden). |
+
+---
+
+## 3. Analyse van niet-gelogde gebeurtenissen (Kritieke Gaten)
+
+Het ontbreken van logging bij de volgende gebeurtenissen vormt het grootste beveiligings- en compliancerisico:
+
+1.  **Gebrek aan dossierinzage logging (Patient Read Access)**:
+    *   *Risico*: Een medewerker of aanvaller kan duizenden patiëntdossiers downloaden via `/ws/rest/v1/patient` zonder dat dit ergens wordt geregistreerd. Dit is een directe schending van de NEN 7510 en AVG/GDPR wetgeving.
+2.  **Ontbreken van IP-blokkering en Brute-force logging**:
+    *   *Risico*: Systemen kunnen langdurig onderworpen worden aan brute-force aanvallen op de Basic Auth filter zonder dat het SOC (Security Operations Center) of de beheerder gealarmeerd wordt, omdat weigeringen niet gelogd worden.
+3.  **Geen logging van kritieke account-wijzigingen**:
+    *   *Risico*: Ongeautoriseerde wachtwoordwijzigingen (zoals misbruik van `SEC-03`) worden niet geregistreerd, waardoor forensisch onderzoek achteraf onmogelijk is.
+
+---
+
+## 4. Het gat tussen Huidig en Gewenst (Gap Analysis)
+
+| Aspect | Huidige Situatie (Gat) | Gewenste Situatie (NEN 7510 Compliant) |
+| :--- | :--- | :--- |
+| **Immutability (Onweerlegbaarheid)** | Logs staan in-memory (`MemoryAppender`) en worden gewist bij JVM-reboot. Lokale logbestanden zijn onbeveiligd en kunnen door een beheerder/hacker worden aangepast of gewist. | Auditlogs worden direct en asynchroon doorgestuurd naar een gecentraliseerde, alleen-lezen logserver (WORM / SIEM). Lokale bestanden hebben strenge OS-rechten. |
+| **Formaat & Consistentie** | Logs zijn platte tekst. De `/serverlog` parser gebruikt regex om kolommen te splitsen, wat faalt zodra de Log4j layout-configuratie wijzigt. | Structured logging (JSON format) voor alle audit events. Dit garandeert dat velden altijd consistent geïnterpreteerd kunnen worden. |
+| **Dataminimalisatie (Privacy)** | Stack traces worden bij fouten volledig getoond aan API-gebruikers (indien enabled) en logs kunnen onbewust HTTP-headers en passwords bevatten. | Automatische maskering van wachtwoorden en tokens. Foutmeldingen aan cliënten bevatten alleen een unieke referentiecode; de details staan veilig in de server-logs. |
+| **Event Dekking** | Alleen systeeminitialisatie en fouten worden gelogd. Geen registratie van patiëntdata-inzage (GET verzoeken) of beveiligingsincidenten. | 100% dekking van alle CRUD-acties op medische endpoints, mislukte authenticaties, en beheeracties (zoals cache wissen). |
+
+---
+
+## 5. Technische Uitwerking van Mitigaties (Voorgestelde Code)
+
+### 5.1 Implementatie van de Audit Log Interceptor (GET/POST Dossierinzage)
+Om te voldoen aan NEN 7510, moet een Spring Interceptor worden toegevoegd die specifiek de REST API endpoints monitort en dossierinzage registreert in een aparte, beveiligde audit log.
+
+```java
+package org.openmrs.module.webservices.rest.web.filter;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.openmrs.api.context.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
+
+public class RestAuditLogInterceptor extends HandlerInterceptorAdapter {
     
-    B -->|Result| E[NEN 7510 & GDPR Compliance]
-    C -->|Result| E
-    D -->|Result| E
+    private static final Logger auditLog = LoggerFactory.getLogger("REST_AUDIT_LOGGER");
+    
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String path = request.getRequestURI();
+        String method = request.getMethod();
+        String ipAddress = request.getRemoteAddr();
+        String user = Context.isAuthenticated() ? Context.getAuthenticatedUser().getUsername() : "ANONYMOUS";
+        
+        // Controleer of het verzoek medische gegevens raakt
+        if (path.contains("/rest/v1/patient") || path.contains("/rest/v1/encounter") || path.contains("/rest/v1/obs")) {
+            // Log in gestructureerd JSON formaat voor SIEM-ingest
+            auditLog.info("{{\"timestamp\":\"{}\", \"event\":\"MEDICAL_DATA_ACCESS\", \"user\":\"{}\", \"ip\":\"{}\", \"method\":\"{}\", \"uri\":\"{}\"}}",
+                java.time.Instant.now(), user, ipAddress, method, path);
+        }
+        return true;
+    }
+}
 ```
 
-### 3.1 Step 1: Ensure Immutability (Centralization)
-*   **Action**: Configure OpenMRS logging backend (Log4j/Logback) to ship logs asynchronously to an external secure Syslog, SIEM, or cloud logging service (e.g., ELK, Splunk).
-*   **Enforcement**: Restrict write access to local log files using OS-level permissions (e.g., root/service owner execution only, append-only file flags).
+### 5.2 Aanpassen van RestUtil.wrapErrorResponse (Voorkomen van Datalekken)
+Klasse-namen en regelnummers worden momenteel blootgesteld aan de client. Dit moet worden verborgen in productie.
 
-### 3.2 Step 2: Establish Consistent Structured Layout (JSON)
-*   **Action**: Standardize auditing formats. Every security and access event must be logged using a structured JSON pattern:
-    ```json
-    {
-      "timestamp": "ISO-8601",
-      "severity": "INFO|WARN|ERROR",
-      "principal": "User-UUID",
-      "clientIp": "Client-IP-Address",
-      "action": "HTTP-METHOD",
-      "resource": "API-PATH",
-      "status": "HTTP-STATUS-CODE",
-      "message": "Action summary"
+```java
+// Wijziging in RestUtil.java:
+public static SimpleObject wrapErrorResponse(Exception ex, String reason) {
+    LinkedHashMap<String, String> map = new LinkedHashMap<>();
+    
+    if (reason != null && !reason.isEmpty()) {
+        map.put("message", reason);
+    } else {
+        map.put("message", "An unexpected error occurred.");
     }
-    ```
-*   **Enforcement**: Replace custom regex text parsing with direct JSON deserialization.
+    
+    // Verwijder regelnummers en interne klassen uit API response voor productie
+    map.put("code", "INTERNAL_ERROR"); 
+    map.put("detail", "Details are recorded in server logs.");
+    map.put("rawMessage", ""); // Leegmaken om query lekken te voorkomen
+    
+    return new SimpleObject().add("error", map);
+}
+```
 
-### 3.3 Step 3: Prevent Data Exposure
-*   **Action**: Modify `RestUtil.wrapErrorResponse` to suppress line numbers, internal class paths, and stack traces when running in production.
-*   **Redaction**: Enforce an automated log scrubber/filter in the logging framework configuration to mask passwords, Basic Auth headers, and sensitive session tokens from all outputs.
+---
 
-### 3.4 Step 4: Add Access and Security Audit Logging
-*   **Action**: Introduce a Servlet Filter or Spring Interceptor to log every REST request targeting clinical resources (`/patient`, `/encounter`, `/obs`, `/person`).
-*   **Event Fields**: Capture the requesting user's identity, the target patient's UUID, the action performed, and the timestamp.
+## 6. Gedetailleerd Implementatie-Stappenplan
+
+### Fase 1: Directe Acties & Hotfixes (Week 1)
+- [ ] **Data Redactie in API Responses**: Pas `RestUtil.wrapErrorResponse` aan om blootstelling van klassennamen en stack traces direct te blokkeren voor alle REST API gebruikers.
+- [ ] **DEBUG Log Opschoning**: Schakel het loggen van uitzonderingen (exceptions) in `AuthorizationFilter` uit voor productie, of filter exception-traces zodat credential-strings niet in plaintext logbestanden terechtkomen.
+- [ ] **Beveilig Diagnostisch Endpoint**: Plaats `/session/diag` achter een expliciete beheerdersrolcheck.
+
+### Fase 2: Audit Event Logging Implementatie (Week 1-2)
+- [ ] **Implementeer `RestAuditLogInterceptor`**: Integreer de Spring interceptor (zie sectie 5.1) in de Spring Web-configuratie van de REST-module.
+- [ ] **Dossierinzage Registratie**: Zorg ervoor dat elk GET-verzoek naar `/patient` en `/encounter` succesvol wordt vastgelegd inclusief de ID's van de opgevraagde resources.
+- [ ] **IP Block & Security Alerts**: Voeg een waarschuwingslog (WARN) toe in `AuthorizationFilter` wanneer een IP-adres wordt geblokkeerd of wanneer Basic Auth decodering faalt.
+
+### Fase 3: Infrastructuur & Onweerlegbaarheid (Week 2-3)
+- [ ] **JSON Log Format**: Configureer Logback/Log4j om auditlogs weg te schrijven in JSON-formaat voor eenvoudige SIEM-parsing.
+- [ ] **Log Centralisatie**: Configureer een `SyslogAppender` of forwarder (bijv. Filebeat) die logs realtime verstuurt naar een centrale log-accumulator (WORM of SIEM).
+- [ ] **OS-Level Machtigingen**: Stel de directoryrechten van `/var/log/openmrs/` zo in dat alleen de openmrs-systeemservice schrijfrechten heeft en bewerkingsrechten voor administrators zijn uitgeschakeld (append-only).
+
+### Fase 4: Validatie & Compliance Audit (Week 3-4)
+- [ ] **Validatietests**: Voer integratietests uit die controleren of mislukte inlogs en dossierinzagen daadwerkelijk in de JSON-logs verschijnen.
+- [ ] **Penetration Testing**: Test of het manipuleren van headers (zoals `X-Forwarded-For`) geen valse IP-informatie in de audit logs injecteert.
+- [ ] **NEN 7510 Compliance Review**: Doorloop de auditmatrix met de compliance officer om formele goedkeuring te verkrijgen voor NEN 7510 Control A.8.15.
