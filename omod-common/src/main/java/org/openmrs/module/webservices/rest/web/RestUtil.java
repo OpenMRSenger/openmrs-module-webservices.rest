@@ -823,7 +823,7 @@ public class RestUtil implements GlobalPropertyListener {
 		log.error(reason, ex);
 		
 		LinkedHashMap<String, String> map = new LinkedHashMap<>();
-		if (reason != null && !reason.isEmpty()) {
+		if (StringUtils.isNotBlank(reason)) {
 			map.put(PROPERTY_MESSAGE, reason);
 		} else {
 			map.put(PROPERTY_MESSAGE, "An unexpected error occurred.");

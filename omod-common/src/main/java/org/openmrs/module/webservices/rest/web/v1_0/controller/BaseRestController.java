@@ -90,7 +90,7 @@ public class BaseRestController {
 	public SimpleObject conversionExceptionHandler(ConversionException conversionException, HttpServletRequest request,
 	        HttpServletResponse response) {
 		response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-		return RestUtil.wrapErrorResponse(conversionException, "");
+		return RestUtil.wrapErrorResponse(conversionException, conversionException.getMessage());
 	}
 	
 	@ExceptionHandler(HttpMessageNotReadableException.class)
@@ -98,7 +98,7 @@ public class BaseRestController {
 	public SimpleObject httpMessageNotReadableExceptionHandler(HttpMessageNotReadableException httpMessageNotReadableException, HttpServletRequest request,
 	        HttpServletResponse response) {
 		response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-		return RestUtil.wrapErrorResponse(httpMessageNotReadableException, "");
+		return RestUtil.wrapErrorResponse(httpMessageNotReadableException, httpMessageNotReadableException.getMessage());
 	}
 	
 	@ExceptionHandler(Exception.class)
