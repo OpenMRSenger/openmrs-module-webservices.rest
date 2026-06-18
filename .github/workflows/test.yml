@@ -1,0 +1,25 @@
+name: Run tests maven
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+    build: 
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Setup Java
+              uses: actions/setup-java@v5
+              with:
+                java-version: '11'
+                distribution: 'temurin'
+                cache: 'maven'
+
+            - name: Run tests
+              run: mvn test

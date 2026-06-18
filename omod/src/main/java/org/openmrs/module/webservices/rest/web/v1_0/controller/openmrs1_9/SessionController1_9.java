@@ -31,6 +31,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
@@ -127,6 +128,8 @@ public class SessionController1_9 extends BaseRestController {
 	@ResponseBody
 	@ResponseStatus(value = HttpStatus.NO_CONTENT)
 	public void delete(HttpServletRequest request) {
+		String username = Context.getAuthenticatedUser() != null ? Context.getAuthenticatedUser().getUsername() : "UNKNOWN";
+		log.info("Logging out user: {}", username);
 		Context.logout();
 		HttpSession session = request.getSession(false);
 		if (session != null && request.isRequestedSessionIdValid()) {
@@ -165,11 +168,11 @@ public class SessionController1_9 extends BaseRestController {
 	/**
 	 * Diagnostics endpoint for integration testing and support. Returns session and user information
 	 * to help diagnose authentication issues.
-	 * NOTE: No authorization check — accessible to any caller (authenticated or not).
 	 */
 	@RequestMapping(value = "/diag", method = RequestMethod.GET)
 	@ResponseBody
-	public Object getDiagnostics(@org.springframework.web.bind.annotation.RequestParam(value = "token", required = false) String token) {
+	public Object getDiagnostics(@RequestParam(value = "token", required = false) String token) {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		SimpleObject diag = new SimpleObject();
 		diag.add("authenticated", Context.isAuthenticated());
 		diag.add("serverTime", System.currentTimeMillis());

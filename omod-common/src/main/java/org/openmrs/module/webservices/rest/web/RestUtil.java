@@ -63,6 +63,8 @@ public class RestUtil implements GlobalPropertyListener {
 	
 	private static boolean contextEnabled = true;
 
+	private static final String PROPERTY_MESSAGE = "message";
+
 	/**
 	 * Returns the global property value with the given name
 	 * @param propertyName the global property to retrieve
@@ -818,53 +820,18 @@ public class RestUtil implements GlobalPropertyListener {
 	 * @return
 	 */
 	public static SimpleObject wrapErrorResponse(Exception ex, String reason) {
-		
-		String message = ex.getMessage();
-		Throwable cause = ex.getCause();
-		while (cause != null) {
-			String msg = cause.getMessage();
-			if (StringUtils.isNotBlank(msg)) {
-				if (StringUtils.isNotBlank(message)) {
-					message += " => ";
-				}
-				else {
-					message = "";
-				}
-				message += msg;
-			}
-			cause = cause.getCause();
-		}
+		log.error(reason, ex);
 		
 		LinkedHashMap<String, String> map = new LinkedHashMap<>();
-		if (reason != null && !reason.isEmpty()) {
-			map.put("message", reason + " [" + message + "]");
+		if (StringUtils.isNotBlank(reason)) {
+			map.put(PROPERTY_MESSAGE, reason);
 		} else {
-			map.put("message", "[" + message + "]");
+			map.put(PROPERTY_MESSAGE, "An unexpected error occurred.");
 		}
-		StackTraceElement[] stackTraceElements = ex.getStackTrace();
-		if (stackTraceElements.length > 0) {
-			StackTraceElement stackTraceElement = ex.getStackTrace()[0];
-			String stackTraceDetailsEnabledGp = null;
-			try {
-				Context.addProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
-				stackTraceDetailsEnabledGp = getGlobalProperty(RestConstants.ENABLE_STACK_TRACE_DETAILS_GLOBAL_PROPERTY_NAME, "false");
-			}
-			finally {
-				Context.removeProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
-			}
-			map.put("code", stackTraceElement.getClassName() + ":" + stackTraceElement.getLineNumber());
-			if ("true".equalsIgnoreCase(stackTraceDetailsEnabledGp)) {
-				map.put("detail", ExceptionUtils.getStackTrace(ex));
-			} else {
-				map.put("detail", "");
-			}
-		} else {
-			map.put("code", "");
-			map.put("detail", "");
-		}
-		map.put("rawMessage", ex.getMessage());
-		String translatedMessage = Context.getMessageSourceService().getMessage(ex.getMessage(), null, null, Context.getLocale());
-		map.put("translatedMessage", translatedMessage);
+		
+		map.put("code", "INTERNAL_ERROR");
+		map.put("detail", "Details are recorded in server logs.");
+		map.put("rawMessage", "");
 		
 		return new SimpleObject().add("error", map);
 	}
@@ -881,7 +848,7 @@ public class RestUtil implements GlobalPropertyListener {
 		MessageSourceService messageSourceService = Context.getMessageSourceService();
 		
 		SimpleObject errors = new SimpleObject();
-		errors.add("message", messageSourceService.getMessage("webservices.rest.error.invalid.submission"));
+		errors.add(PROPERTY_MESSAGE, messageSourceService.getMessage("webservices.rest.error.invalid.submission"));
 		errors.add("code", "webservices.rest.error.invalid.submission");
 		
 		List<SimpleObject> globalErrors = new ArrayList<SimpleObject>();
@@ -896,7 +863,7 @@ public class RestUtil implements GlobalPropertyListener {
 				
 				SimpleObject globalError = new SimpleObject();
 				globalError.put("code", err.getCode());
-				globalError.put("message", message);
+				globalError.put(PROPERTY_MESSAGE, message);
 				globalErrors.add(globalError);
 			}
 			
@@ -910,7 +877,7 @@ public class RestUtil implements GlobalPropertyListener {
 				
 				SimpleObject fieldError = new SimpleObject();
 				fieldError.put("code", err.getCode());
-				fieldError.put("message", message);
+				fieldError.put(PROPERTY_MESSAGE, message);
 				
 				if (!fieldErrors.containsKey(err.getField())) {
 					fieldErrors.put(err.getField(), new ArrayList<SimpleObject>());

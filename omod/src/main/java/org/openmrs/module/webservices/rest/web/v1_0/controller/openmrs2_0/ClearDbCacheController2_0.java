@@ -49,6 +49,7 @@ public class ClearDbCacheController2_0 extends BaseRestController {
 	@RequestMapping
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void clearDbCache(@RequestBody(required = false) String json) throws Exception {
+		Context.requirePrivilege(RestConstants.PRIV_MANAGE_RESTWS);
 		String resourceName = null;
 		String subResourceName = null;
 		String uuid = null;
@@ -61,10 +62,9 @@ public class ClearDbCacheController2_0 extends BaseRestController {
 		
 		//TODO Replace this logic with the methods added as part of https://issues.openmrs.org/browse/TRUNK-6047
 		SessionFactory sf = Context.getRegisteredComponents(SessionFactory.class).get(0);
+		String user = Context.getAuthenticatedUser() != null ? Context.getAuthenticatedUser().getUsername() : "UNKNOWN";
 		if (StringUtils.isBlank(resourceName)) {
-			if (log.isDebugEnabled()) {
-				log.debug("Clearing DB cache via REST");
-			}
+			log.info("User '{}' is clearing ALL DB cache regions via REST", user);
 			
 			sf.getCache().evictAllRegions();
 		} else {
@@ -75,16 +75,13 @@ public class ClearDbCacheController2_0 extends BaseRestController {
 			Resource resource = restService.getResourceByName(buildResourceName(resourceName));
 			Class<?> supportedClass = RestUtil.getSupportedClass(resource);
 			if (StringUtils.isBlank(uuid)) {
-				if (log.isDebugEnabled()) {
-					log.debug("Clearing DB cache via REST for resource: {} ({})", resourceName, supportedClass);
-				}
+				log.info("User '{}' is clearing DB cache regions via REST for resource: {} ({})", 
+					new Object[] { user, resourceName, supportedClass });
 				
 				sf.getCache().evictEntityRegion(supportedClass);
 			} else {
-				if (log.isDebugEnabled()) {
-					log.debug("Clearing DB cache via REST for resource: {} ({}) with uuid: {}",
-					    new Object[] { resourceName, supportedClass, uuid });
-				}
+				log.info("User '{}' is clearing DB cache regions via REST for resource: {} ({}) with uuid: {}",
+				    new Object[] { user, resourceName, supportedClass, uuid });
 				
 				OpenmrsObject object = (OpenmrsObject) ((BaseDelegatingResource) resource).getByUniqueId(uuid);
 				if ("user".equals(resourceName)) {

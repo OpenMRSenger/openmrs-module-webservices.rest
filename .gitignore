@@ -75,5 +75,14 @@ nb-configuration.xml
 
 !omod/src/main/webapp/resources/js/swagger-ui/*
 
+### Docker env files (keep secrets out of git) ###
+.env
+.env.dev
+.env.test
+.env.prod
+!.env.example
+#############
+
 ### Lucene Indices from Tests ###
 /omod-*/org.openmrs.*/*
+skills-lock.json

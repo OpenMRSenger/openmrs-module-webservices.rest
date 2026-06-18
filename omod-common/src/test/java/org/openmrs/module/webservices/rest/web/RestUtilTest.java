@@ -141,24 +141,24 @@ public class RestUtilTest extends BaseModuleWebContextSensitiveTest {
 	
 	/**
 	 * @see RestUtil#wrapErrorResponse(Exception,String)
-	 * @verifies sets message to the exception message if the reason given is null
+	 * @verifies sets message to a generic message if the reason given is null
 	 */
 	@Test
-	public void wrapErrorResponse_shouldSetExceptionMessageIfReasonIsNull() throws Exception {
+	public void wrapErrorResponse_shouldSetGenericMessageIfReasonIsNull() throws Exception {
 		SimpleObject returnObject = RestUtil.wrapErrorResponse(new Exception("exceptionmessage"), null);
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("[exceptionmessage]", errorResponseMap.get("message"));
+		Assert.assertEquals("An unexpected error occurred.", errorResponseMap.get("message"));
 	}
 	
 	/**
 	 * @see RestUtil#wrapErrorResponse(Exception,String)
-	 * @verifies sets message to the exception message if the reason given is empty
+	 * @verifies sets message to a generic message if the reason given is empty
 	 */
 	@Test
-	public void wrapErrorResponse_shouldSetExceptionMessageIfReasonIsEmpty() throws Exception {
+	public void wrapErrorResponse_shouldSetGenericMessageIfReasonIsEmpty() throws Exception {
 		SimpleObject returnObject = RestUtil.wrapErrorResponse(new Exception("exceptionmessage"), "");
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("[exceptionmessage]", errorResponseMap.get("message"));
+		Assert.assertEquals("An unexpected error occurred.", errorResponseMap.get("message"));
 	}
 	
 	/**
@@ -169,57 +169,38 @@ public class RestUtilTest extends BaseModuleWebContextSensitiveTest {
 	public void wrapErrorResponse_shouldSetReasonAsMessageIfNotEmpty() throws Exception {
 		SimpleObject returnObject = RestUtil.wrapErrorResponse(new Exception("exceptionmessage"), "reason");
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("reason [exceptionmessage]", errorResponseMap.get("message"));
+		Assert.assertEquals("reason", errorResponseMap.get("message"));
 	}
 	
 	/**
 	 * @see RestUtil#wrapErrorResponse(Exception,String)
-	 * @verifies set stack trace code if available
+	 * @verifies sets code to INTERNAL_ERROR and hides detail
 	 */
 	@Test
-	public void wrapErrorResponse_shouldSetStackTraceCodeAndDetailIfAvailable() throws Exception {
+	public void wrapErrorResponse_shouldSetInternalErrorAndHideDetail() throws Exception {
 		Exception apiException = new APIException("exceptionmessage");
 		apiException.setStackTrace(new StackTraceElement[] { new StackTraceElement("org.mypackage.myclassname", "methodName", "fileName", 149) });
 
 		SimpleObject returnObject = RestUtil.wrapErrorResponse(apiException, "wraperrorresponsemessage");
 
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("org.mypackage.myclassname:149", errorResponseMap.get("code"));
+		Assert.assertEquals("INTERNAL_ERROR", errorResponseMap.get("code"));
+		Assert.assertEquals("Details are recorded in server logs.", errorResponseMap.get("detail"));
+		Assert.assertEquals("", errorResponseMap.get("rawMessage"));
 	}
 	
 	/**
 	 * @see RestUtil#wrapErrorResponse(Exception,String)
-	 * @verifies set stack trace code and detail empty if not available
+	 * @verifies always hides stack trace details regardless of global property
 	 */
 	@Test
-	public void wrapErrorResponse_shouldSetStackTraceCodeAndDetailEmptyIfNotAvailable() throws Exception {
-		Exception apiException = new APIException("exceptionmessage");
-		apiException.setStackTrace(new StackTraceElement[] {} );
-		
-		SimpleObject returnObject = RestUtil.wrapErrorResponse(apiException, "wraperrorresponsemessage");
-		
-		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("", errorResponseMap.get("code"));
-		Assert.assertEquals("", errorResponseMap.get("detail"));
-	}
-	@Test
-	public void wrapErrorResponse_shouldSetStackTraceDetailsIfGlobalPropEnabled() throws Exception {
+	public void wrapErrorResponse_shouldAlwaysHideStackTraceDetails() throws Exception {
 		Context.getAdministrationService().saveGlobalProperty(
 				new GlobalProperty(RestConstants.ENABLE_STACK_TRACE_DETAILS_GLOBAL_PROPERTY_NAME, "true"));
 		Exception ex = new Exception("exceptionmessage");
 		SimpleObject returnObject = RestUtil.wrapErrorResponse(ex, "wraperrorresponsemessage");
 
 		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertNotEquals("", errorResponseMap.get("detail"));
-	}
-	@Test
-	public void wrapErrorResponse_shouldSetNoStackTraceDetailsIfGlobalPropDisabled() throws Exception {
-		Context.getAdministrationService().saveGlobalProperty(
-				new GlobalProperty(RestConstants.ENABLE_STACK_TRACE_DETAILS_GLOBAL_PROPERTY_NAME, "false"));
-		Exception ex = new Exception("exceptionmessage");
-		SimpleObject returnObject = RestUtil.wrapErrorResponse(ex, "wraperrorresponsemessage");
-
-		LinkedHashMap errorResponseMap = (LinkedHashMap) returnObject.get("error");
-		Assert.assertEquals("", errorResponseMap.get("detail"));
+		Assert.assertEquals("Details are recorded in server logs.", errorResponseMap.get("detail"));
 	}
 }

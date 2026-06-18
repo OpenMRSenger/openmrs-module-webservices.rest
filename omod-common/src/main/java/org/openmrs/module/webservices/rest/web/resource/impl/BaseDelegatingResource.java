@@ -30,6 +30,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.proxy.HibernateProxy;
 import org.openmrs.Changeable;
+import org.openmrs.Creatable;
 import org.openmrs.OpenmrsObject;
 import org.openmrs.Retireable;
 import org.openmrs.Voidable;
@@ -873,7 +874,7 @@ public abstract class BaseDelegatingResource<T> extends BaseDelegatingConverter<
 		}
 
 		if (Context.hasPrivilege(RestConstants.PRIV_SET_AUDIT_DATA)) {
-			if (delegate instanceof org.openmrs.Creatable) {
+			if (delegate instanceof Creatable) {
 				description.addProperty("dateCreated");
 				description.addProperty("creator");
 			}

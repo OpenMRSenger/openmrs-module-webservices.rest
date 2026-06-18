@@ -14,6 +14,7 @@ import org.mockingbird.test.Animal;
 import org.mockingbird.test.Cat;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RequestContext;
+import org.openmrs.module.webservices.rest.web.annotation.SubClassHandler;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
@@ -27,7 +28,7 @@ import org.openmrs.module.webservices.rest.web.response.ResponseException;
  * package not under org.openmrs.xxx on purpose otherwise it will be picked up by other tests due to
  * {@link org.openmrs.module.webservices.rest.web.OpenmrsClassScanner} and its classpath pattern.
  */
-@org.openmrs.module.webservices.rest.web.annotation.SubClassHandler(supportedClass = Cat.class, supportedOpenmrsVersions = { "1.9.*" })
+@SubClassHandler(supportedClass = Cat.class, supportedOpenmrsVersions = { "1.9.*" })
 public class CatSubclassHandler_1_9 implements DelegatingSubclassHandler<Animal, Cat> {
 	
 	@Override

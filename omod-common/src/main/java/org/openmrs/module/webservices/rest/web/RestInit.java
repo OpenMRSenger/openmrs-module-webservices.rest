@@ -9,6 +9,8 @@
  */
 package org.openmrs.module.webservices.rest.web;
 
+import com.thoughtworks.xstream.security.NoTypePermission;
+import com.thoughtworks.xstream.security.WildcardTypePermission;
 import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,5 +31,13 @@ public class RestInit {
 	@PostConstruct
 	public void init() {
 		marshaller.setAutodetectAnnotations(true);
+		marshaller.setTypePermissions(
+			NoTypePermission.NONE,
+			new WildcardTypePermission(new String[] {
+				"org.openmrs.module.webservices.rest.**",
+				"java.util.**",
+				"java.lang.**"
+			})
+		);
 	}
 }
