@@ -54,6 +54,8 @@ public class AuthorizationFilter implements Filter {
 
 	private static final String RETRY_AFTER_SECONDS = "300";
 	
+	private static final Logger auditLog = LoggerFactory.getLogger("REST_AUDIT_LOGGER");
+	
 	/**
 	 * @see javax.servlet.Filter#init(javax.servlet.FilterConfig)
 	 */
@@ -85,12 +87,13 @@ public class AuthorizationFilter implements Filter {
 			ipAddress = request.getRemoteAddr();
 		}
 		
+		HttpServletResponse httpResponse = (HttpServletResponse) response;
+		
 		// check the IP address first.  If its not valid, return a 403
 		if (!RestUtil.isIpAllowed(ipAddress)) {
+			auditLog.warn("IP access denied: {}", ipAddress);
 			// the ip address is not valid, set a 403 http error code
-			HttpServletResponse httpresponse = (HttpServletResponse) response;
-			httpresponse.sendError(HttpServletResponse.SC_FORBIDDEN,
-			    "IP address '" + ipAddress + "' is not authorized");
+			httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "IP address '" + ipAddress + "' is not authorized");
 			return;
 		}
 		
@@ -98,7 +101,6 @@ public class AuthorizationFilter implements Filter {
 		if (request instanceof HttpServletRequest) {
 			HttpServletRequest httpRequest = (HttpServletRequest) request;
 			if (httpRequest.getRequestedSessionId() != null && !httpRequest.isRequestedSessionIdValid()) {
-				HttpServletResponse httpResponse = (HttpServletResponse) response;
 				httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session timed out");
 			}
 			
@@ -111,7 +113,6 @@ public class AuthorizationFilter implements Filter {
 							// Enforce SSL/TLS for Basic Auth to prevent cleartext credentials leakage
 							boolean isSecure = httpRequest.isSecure() || "https".equalsIgnoreCase(httpRequest.getHeader("X-Forwarded-Proto"));
 							if (!isSecure) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, "SSL/TLS is required for Basic Authentication");
 								return;
 							}
@@ -119,14 +120,12 @@ public class AuthorizationFilter implements Filter {
 							// remove the leading "Basic "
 							basicAuth = basicAuth.substring(6);
 							if (StringUtils.isBlank(basicAuth)) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
 								return;
 							}
 							
 							String decoded = new String(Base64.decodeBase64(basicAuth), Charset.forName("UTF-8"));
 							if (StringUtils.isBlank(decoded) || !decoded.contains(":")) {
-								HttpServletResponse httpResponse = (HttpServletResponse) response;
 								httpResponse.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid credentials provided");
 								return;
 							}

@@ -140,7 +140,7 @@ public class BaseRestControllerTest extends BaseModuleWebContextSensitiveTest {
 		SimpleObject responseSimpleObject = controller.conversionExceptionHandler(ex, request, response);
 		assertThat(response.getStatus(), is(HttpServletResponse.SC_BAD_REQUEST));
 		LinkedHashMap errors = (LinkedHashMap) responseSimpleObject.get("error");
-		Assert.assertEquals("[" + message + "]", errors.get("message"));
+		Assert.assertEquals(message, errors.get("message"));
 	}
 	
 	@Test

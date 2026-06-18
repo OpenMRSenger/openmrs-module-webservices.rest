@@ -39,6 +39,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/password")
 public class ChangePasswordController1_8 extends BaseRestController {
 	
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChangePasswordController1_8.class);
+	
 	@Qualifier("userService")
 	@Autowired
 	private UserService userService;
@@ -51,6 +53,7 @@ public class ChangePasswordController1_8 extends BaseRestController {
 		if (!Context.isAuthenticated()) {
 			throw new APIAuthenticationException("Must be authenticated to change your own password");
 		}
+		log.info("User '{}' is changing their own password", Context.getAuthenticatedUser().getUsername());
 		try {
 			Context.addProxyPrivilege(PrivilegeConstants.GET_GLOBAL_PROPERTIES);
 			userService.changePassword(oldPassword, newPassword);
@@ -81,6 +84,9 @@ public class ChangePasswordController1_8 extends BaseRestController {
 		if (user == null || user.getUserId() == null) {
 			throw new NullPointerException();
 		} else {
+			log.info("User '{}' is changing password for user '{}'", 
+				Context.isAuthenticated() ? Context.getAuthenticatedUser().getUsername() : "ANONYMOUS",
+				user.getUsername());
 			userService.changePassword(user, newPassword);
 		}
 	}
