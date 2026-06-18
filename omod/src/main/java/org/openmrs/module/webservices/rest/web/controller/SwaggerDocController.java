@@ -12,6 +12,8 @@ package org.openmrs.module.webservices.rest.web.controller;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.util.HtmlUtils;
 
 @Controller("webservices.rest.SwaggerDocController")
@@ -23,9 +25,16 @@ public class SwaggerDocController {
 	}
 
 	@RequestMapping(value = "/debug", method = RequestMethod.GET)
-	@org.springframework.web.bind.annotation.ResponseBody
-	public String debug(@org.springframework.web.bind.annotation.RequestParam("tag") String tag) {
+	@ResponseBody
+	public String debug(@RequestParam("tag") String tag, javax.servlet.http.HttpServletResponse response) {
+		response.setHeader("X-XSS-Protection", "1; mode=block");
+		response.setHeader("Content-Security-Policy", "default-src 'self'");
+		response.setHeader("X-Content-Type-Options", "nosniff");
+
+		if (tag == null || !tag.matches("^[a-zA-Z0-9_-]+$")) {
+			response.setStatus(javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST);
+			return "Invalid tag parameter";
+		}
 		return "<h1>Debugging Tag: " + HtmlUtils.htmlEscape(tag) + "</h1>";
 	}
-	
 }

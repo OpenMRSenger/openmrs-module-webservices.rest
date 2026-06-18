@@ -1,0 +1,52 @@
+# Production environment. Separate DB, volumes and credentials from dev/test.
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# IMPORTANT before first prod run:
+#   - Set strong, unique passwords in .env.prod (do NOT commit that file).
+#   - DB port is NOT published to the host; the app reaches it over the
+#     internal network only.
+#   - OMRS_DB_AUTO_UPDATE / OMRS_CREATE_TABLES default to false so a real
+#     database is never silently migrated/recreated.
+name: webservices-rest-prod
+
+services:
+  db:
+    image: mariadb:10.11
+    restart: always
+    env_file: .env.prod
+    environment:
+      MARIADB_DATABASE: ${OMRS_DB_NAME}
+      MARIADB_USER: ${OMRS_DB_USERNAME}
+      MARIADB_PASSWORD: ${OMRS_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${OMRS_DB_ROOT_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_allowed_packet=96M
+    volumes:
+      - prod-db-data:/var/lib/mysql
+    # No host port mapping in prod: DB stays on the internal network only.
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  openmrs:
+    build:
+      context: .
+      args:
+        OPENMRS_CORE_TAG: ${OPENMRS_CORE_TAG}
+    restart: always
+    env_file: .env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${OMRS_WEB_PORT}:8080"
+    volumes:
+      - prod-openmrs-data:/openmrs/data
+
+volumes:
+  prod-db-data:
+  prod-openmrs-data:

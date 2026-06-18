@@ -1,0 +1,39 @@
+name: Code Coverage (JaCoCo)
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run tests and generate JaCoCo report
+        # 'package' i.p.v. 'test': in deze multi-module reactor unpackt de omod-module
+        # de omod-common jar in generate-resources (MDEP-98) - dat vereist dat
+        # omod-common al gepackaged is.
+        run: mvn -B -fae clean package jacoco:report
+
+      - name: Upload JaCoCo coverage report
+        if: always() 
+        uses: actions/upload-artifact@v7
+        with:
+          name: jacoco-coverage-report
+          path: |
+            **/target/site/jacoco/**
+          retention-days: 14
+          if-no-files-found: warn

@@ -9,6 +9,7 @@
  */
 package org.openmrs.module.webservices.rest.web.v1_0.resource.openmrs1_10;
 
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -150,34 +151,11 @@ public class DrugOrderSubclassHandler1_10 extends DrugOrderSubclassHandler1_8 {
 	}
 	
 	public PageableResult getActiveOrders(Patient patient, RequestContext context) {
-		String careSettingUuid = context.getRequest().getParameter("careSetting");
-		String asOfDateString = context.getRequest().getParameter("asOfDate");
-		String sortParam = context.getRequest().getParameter("sort");
-		CareSetting careSetting = null;
-		java.util.Date asOfDate = null;
-		if (StringUtils.isNotBlank(asOfDateString)) {
-			asOfDate = (java.util.Date) ConversionUtil.convert(asOfDateString, java.util.Date.class);
-		}
-		if (StringUtils.isNotBlank(careSettingUuid)) {
-			careSetting = ((CareSettingResource1_10) Context.getService(RestService.class).getResourceBySupportedClass(
-			    CareSetting.class)).getByUniqueId(careSettingUuid);
-		}
-		
-		String status = context.getRequest().getParameter("status");
 		OrderService os = Context.getOrderService();
 		OrderType orderType = os.getOrderTypeByName("Drug order");
-		List<Order> drugOrders = OrderUtil.getOrders(patient, careSetting, orderType, status, asOfDate,
-		    context.getIncludeAll());
 		OrderResource1_10 orderResource = (OrderResource1_10) Context.getService(RestService.class)
 		        .getResourceBySupportedClass(Order.class);
-		if (StringUtils.isNotBlank(sortParam)) {
-			List<Order> sortedOrder = orderResource.sortOrdersBasedOnDateActivatedOrDateStopped(drugOrders, sortParam,
-			    status);
-			return new NeedsPaging<Order>(sortedOrder, context);
-		}
-		else {
-			return new NeedsPaging<Order>(drugOrders, context);
-		}
+		return orderResource.getOrders(patient, orderType, context);
 	}
 	
 	/**

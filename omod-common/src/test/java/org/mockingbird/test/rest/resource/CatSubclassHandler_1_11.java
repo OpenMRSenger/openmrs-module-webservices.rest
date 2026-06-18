@@ -10,6 +10,7 @@
 package org.mockingbird.test.rest.resource;
 
 import org.mockingbird.test.Cat;
+import org.openmrs.module.webservices.rest.web.annotation.SubClassHandler;
 
 /**
  * Fake {@code Resource} used in tests at
@@ -17,7 +18,7 @@ import org.mockingbird.test.Cat;
  * package not under org.openmrs.xxx on purpose otherwise it will be picked up by other tests due to
  * {@link org.openmrs.module.webservices.rest.web.OpenmrsClassScanner} and its classpath pattern.
  */
-@org.openmrs.module.webservices.rest.web.annotation.SubClassHandler(supportedClass = Cat.class, supportedOpenmrsVersions = { "1.11.*" })
+@SubClassHandler(supportedClass = Cat.class, supportedOpenmrsVersions = { "1.11.*" })
 public class CatSubclassHandler_1_11 extends CatSubclassHandler_1_9 {
 	
 }

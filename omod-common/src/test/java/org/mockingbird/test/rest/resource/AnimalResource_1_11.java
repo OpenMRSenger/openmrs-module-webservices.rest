@@ -11,6 +11,7 @@ package org.mockingbird.test.rest.resource;
 
 import org.mockingbird.test.Animal;
 import org.openmrs.module.webservices.rest.web.RestConstants;
+import org.openmrs.module.webservices.rest.web.annotation.Resource;
 
 /**
  * Fake {@code Resource} used in tests at
@@ -18,7 +19,7 @@ import org.openmrs.module.webservices.rest.web.RestConstants;
  * package not under org.openmrs.xxx on purpose otherwise it will be picked up by other tests due to
  * {@link org.openmrs.module.webservices.rest.web.OpenmrsClassScanner} and its classpath pattern.
  */
-@org.openmrs.module.webservices.rest.web.annotation.Resource(name = RestConstants.VERSION_1 + "/animal", order = 1, supportedClass = Animal.class, supportedOpenmrsVersions = { "1.11.*" })
+@Resource(name = RestConstants.VERSION_1 + "/animal", order = 1, supportedClass = Animal.class, supportedOpenmrsVersions = { "1.11.*" })
 public class AnimalResource_1_11 extends AnimalResource_1_9 {
 	
 	@Override
