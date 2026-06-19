@@ -64,7 +64,8 @@ De volgende operationele checklist toont onze huidige mijlpalen op de roadmap om
 | :--- | :--- | :--- | :--- | :--- |
 | **Fase 1** | Controleer alle controller-methoden op ontbrekende `@RequiresPrivilege` annotaties en implementeer input-whitelists. | Beheersmaatregel 9.2.3 / 14.2.5 | `L1-CODE` / `L3-FRAMEWORK` | [x] Geverifieerd (SEC-03 opgelost) |
 | **Fase 1** | Implementeer database-triggers die `DELETE`-statements op audit-tabelschema's blokkeren. | Beheersmaatregel 9.4.1 | `L4-INFRA` | [ ] Geïmplementeerd |
-| **Fase 2** | Refactor alle presentatielaag-blokken naar JSTL `<c:out>` output escaping. | Beheersmaatregel 14.2.5 | ` `L1-CODE` | [ ] In Uitvoering |
+| **Fase 2** | Refactor alle presentatielaag-blokken naar JSTL `<c:out>` output escaping. | Beheersmaatregel 14.2.5 | `L1-CODE` | [ ] In Uitvoering |
+| **Fase 2** | Implementeer Spring Interceptor voor REST API-toegangslogging. | Beheersmaatregel 9.4.1 | `L1-CODE` / `L3-FRAMEWORK` | [x] Geverifieerd (RestAuditLogInterceptor actief) |
 | **Fase 2** | Verplicht security-gerichte code reviews voor alle commits die betrekking hebben op autorisatielogica. | Beheersmaatregel 9.2.3 | `L2-REVIEW` | [ ] Operationeel |
 | **Fase 3** | Integreer cryptografische ketens/handtekeningen op actieve audit trail-logs. | Beheersmaatregel 9.4.1 | `L3-AUDIT` | [ ] In Afwachting van Review |
 | **Fase 3** | Roll-out van een systemische, applicatiebrede Content Security Policy (CSP) configuratie. | Beheersmaatregel 14.2.5 | `L3-CSP` / `L2-HEADERS` | [ ] Geïmplementeerd |

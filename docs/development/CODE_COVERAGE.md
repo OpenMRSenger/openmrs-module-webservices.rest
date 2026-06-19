@@ -29,7 +29,7 @@ Voor een omvangrijke legacy codebase (~63.700 regels, complexiteit ~3.878) is 10
 Dit is de "Clean as You Code"-aanpak (vergelijkbaar met SonarQube Quality Gates):
 
 - **Balans kwaliteit/doorontwikkeling:** ontwikkeling gaat door, terwijl elke wijziging de coverage van de codebase geleidelijk verbetert geen apart "test-sprint" nodig.
-- **Haalbaar én ambitieus:** 60% baseline is een concreet, meetbaar tussendoel binnen de projectperiode (startpunt is nu ~0%, geen JaCoCo-rapportage aanwezig).
+- **Haalbaar én ambitieus:** 60% baseline is een concreet, meetbaar tussendoel binnen de projectperiode (startpunt is nu ~69%).
 - **Geen perverse prikkels:** focus op nieuwe code voorkomt tijdverlies aan het testen van binnenkort te verwijderen legacy-code.
 
 ## 4. Vervolgstappen
