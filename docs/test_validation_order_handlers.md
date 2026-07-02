@@ -19,7 +19,7 @@ To validate the refactoring of `DrugOrderSubclassHandler1_10` and `TestOrderSubc
 
 ## 2. Test Execution Results
 
-We added 5 new integration and regression tests in [OrderResource1_10Test](file:///C:/Users/Ruben/Desktop/School/2.4/webrest/openmrs-module-webservices.rest/omod/src/test/java/org/openmrs/module/webservices/rest/web/v1_0/resource/openmrs1_10/OrderResource1_10Test.java):
+We added 5 new integration and regression tests in [OrderResource1_10Test](../omod/src/test/java/org/openmrs/module/webservices/rest/web/v1_0/resource/openmrs1_10/OrderResource1_10Test.java):
 
 * `getOrders_shouldGetOrdersForPatient()`: Validates that patient order queries work correctly.
 * `getOrders_shouldFilterByOrderType()`: Validates that order type filtering logic functions correctly.
