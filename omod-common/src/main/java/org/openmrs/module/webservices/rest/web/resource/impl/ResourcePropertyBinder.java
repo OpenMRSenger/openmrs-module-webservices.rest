@@ -9,7 +9,7 @@
  */
 package org.openmrs.module.webservices.rest.web.resource.impl;
 
-import org.apache.commons.beanutils.PropertyUtils;
+// unused imports removed
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.openmrs.OpenmrsObject;
@@ -18,8 +18,7 @@ import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceD
 import org.openmrs.module.webservices.rest.web.response.ConversionException;
 import org.openmrs.util.OpenmrsUtil;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Type;
+// unused imports removed
 import java.util.*;
 
 public class ResourcePropertyBinder {
@@ -29,14 +28,27 @@ public class ResourcePropertyBinder {
 	private ResourcePropertyBinder() {
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> void setConvertedProperties(BaseDelegatingResource<T> resource, T delegate, Map<String, Object> propertyMap,
 	        DelegatingResourceDescription description, boolean mustIncludeRequiredProperties) throws ConversionException {
-		
 		Map<String, Property> allowedProperties = new LinkedHashMap<String, Property>(description.getProperties());
 		Map<String, Object> propertiesToSet = new HashMap<String, Object>(propertyMap);
 		propertiesToSet.keySet().removeAll(resource.propertiesIgnoredWhenUpdating);
-		
+
+		applyAllowedProperties(resource, delegate, allowedProperties, propertiesToSet);
+
+		Set<String> notAllowedProperties = filterNotAllowedProperties(resource, delegate, propertiesToSet, allowedProperties);
+		if (!notAllowedProperties.isEmpty()) {
+			throw new ConversionException("Some properties are not allowed to be set: "
+					+ StringUtils.join(notAllowedProperties, ", "));
+		}
+
+		if (mustIncludeRequiredProperties) {
+			validateRequiredProperties(allowedProperties, propertyMap);
+		}
+	}
+
+	private static <T> void applyAllowedProperties(BaseDelegatingResource<T> resource, T delegate,
+												   Map<String, Property> allowedProperties, Map<String, Object> propertiesToSet) {
 		for (String property : allowedProperties.keySet()) {
 			if (propertiesToSet.containsKey(property)) {
 				Object oldValue = resource.getProperty(delegate, property);
@@ -48,32 +60,33 @@ public class ResourcePropertyBinder {
 				resource.setProperty(delegate, property, propertiesToSet.get(property));
 			}
 		}
-		
-		Collection<String> notAllowedProperties = CollectionUtils.subtract(propertiesToSet.keySet(), allowedProperties.keySet());
-		for (Iterator<String> iterator = notAllowedProperties.iterator(); iterator.hasNext();) {
-			String property = iterator.next();
+	}
+
+	private static <T> Set<String> filterNotAllowedProperties(BaseDelegatingResource<T> resource, T delegate,
+															  Map<String, Object> propertiesToSet, Map<String, Property> allowedProperties) {
+		Collection<?> notAllowed = CollectionUtils.subtract(propertiesToSet.keySet(), allowedProperties.keySet());
+		Set<String> notAllowedProperties = new LinkedHashSet<String>();
+		for (Object o : notAllowed) {
+			String property = (String) o;
 			Object oldValue = resource.getProperty(delegate, property);
 			Object newValue = propertiesToSet.get(property);
-			if (unchangedValue(oldValue, newValue)) {
-				iterator.remove();
+			if (!unchangedValue(oldValue, newValue)) {
+				notAllowedProperties.add(property);
 			}
 		}
-		if (!notAllowedProperties.isEmpty()) {
-			throw new ConversionException("Some properties are not allowed to be set: "
-			        + StringUtils.join(notAllowedProperties, ", "));
+		return notAllowedProperties;
+	}
+
+	private static void validateRequiredProperties(Map<String, Property> allowedProperties, Map<String, Object> propertyMap) throws ConversionException {
+		Set<String> missingProperties = new HashSet<String>();
+		for (Map.Entry<String, Property> prop : allowedProperties.entrySet()) {
+			if (prop.getValue().isRequired() && !propertyMap.containsKey(prop.getKey())) {
+				missingProperties.add(prop.getKey());
+			}
 		}
-		
-		if (mustIncludeRequiredProperties) {
-			Set<String> missingProperties = new HashSet<String>();
-			for (Map.Entry<String, Property> prop : allowedProperties.entrySet()) {
-				if (prop.getValue().isRequired() && !propertyMap.containsKey(prop.getKey())) {
-					missingProperties.add(prop.getKey());
-				}
-			}
-			if (!missingProperties.isEmpty()) {
-				throw new ConversionException("Some required properties are missing: "
-				        + StringUtils.join(missingProperties, ", "));
-			}
+		if (!missingProperties.isEmpty()) {
+			throw new ConversionException("Some required properties are missing: "
+					+ StringUtils.join(missingProperties, ", "));
 		}
 	}
 	
