@@ -172,35 +172,70 @@ public class ConversionUtil {
 	 * <strong>Should</strong> convert to an array
 	 * <strong>Should</strong> convert to a class
 	 */
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	public static Object convert(Object object, Type toType) throws ConversionException {
-		if (object == null) {
-			return null;
+	private interface TypeConverter {
+		boolean canConvert(Object source, Class<?> toClass, Type toType);
+		Object convert(Object source, Class<?> toClass, Type toType) throws ConversionException;
+	}
+
+	private static final List<TypeConverter> converters = new ArrayList<TypeConverter>();
+
+	static {
+		converters.add(new AssignableConverter());
+		converters.add(new FloatCoercionConverter());
+		converters.add(new CollectionConverter());
+		converters.add(new StringConverter());
+		converters.add(new MapConverter());
+		converters.add(new NumberCoercionConverter());
+		converters.add(new BooleanStringConverter());
+	}
+
+	private static class AssignableConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return toClass.isAssignableFrom(source.getClass());
 		}
-		
-		Class<?> toClass = toType instanceof Class ? ((Class<?>) toType) : (Class<?>) (((ParameterizedType) toType)
-		        .getRawType());
-		
-		// if we're trying to convert _to_ a collection, handle it as a special case
-		if (Collection.class.isAssignableFrom(toClass) || toClass.isArray()) {
-			if (!(object instanceof Collection))
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) {
+			return source;
+		}
+	}
+
+	private static class FloatCoercionConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return toClass.isAssignableFrom(Float.class) && source instanceof Double;
+		}
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) {
+			return ((Double) source).floatValue();
+		}
+	}
+
+	private static class CollectionConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return Collection.class.isAssignableFrom(toClass) || toClass.isArray();
+		}
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) throws ConversionException {
+			if (!(source instanceof Collection)) {
 				throw new ConversionException("Can only convert a Collection to a Collection/Array. Not "
-				        + object.getClass() + " to " + toType, null);
-			
+				        + source.getClass() + " to " + toType, null);
+			}
+			Collection input = (Collection) source;
 			if (toClass.isArray()) {
 				Class<?> targetElementType = toClass.getComponentType();
-				Collection input = (Collection) object;
 				Object ret = Array.newInstance(targetElementType, input.size());
-				
 				int i = 0;
 				for (Object element : input) {
-					Array.set(ret, i, convert(element, targetElementType));
+					Array.set(ret, i, ConversionUtil.convert(element, targetElementType));
 					++i;
 				}
 				return ret;
 			}
 			
-			Collection ret = null;
+			Collection ret;
 			if (SortedSet.class.isAssignableFrom(toClass)) {
 				ret = new TreeSet();
 			} else if (Set.class.isAssignableFrom(toClass)) {
@@ -212,35 +247,31 @@ public class ConversionUtil {
 			}
 			
 			if (toType instanceof ParameterizedType) {
-				// if we have generic type information for the target collection, we can use it to do conversion
 				ParameterizedType toParameterizedType = (ParameterizedType) toType;
 				Type targetElementType = toParameterizedType.getActualTypeArguments()[0];
-				for (Object element : (Collection) object) {
-					ret.add(convert(element, targetElementType));
+				for (Object element : input) {
+					ret.add(ConversionUtil.convert(element, targetElementType));
 				}
 			} else {
-				// otherwise we must just add all items in a non-type-safe manner
-				ret.addAll((Collection) object);
+				ret.addAll(input);
 			}
 			return ret;
 		}
-		
-		// otherwise we're converting _to_ a non-collection type
-		
-		if (toClass.isAssignableFrom(object.getClass())) {
-			return object;
+	}
+
+	private static class StringConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return source instanceof String;
 		}
-		
-		// Numbers with a decimal are always assumed to be Double, so convert to Float, if necessary
-		if (toClass.isAssignableFrom(Float.class) && object instanceof Double) {
-			return new Float((Double) object);
-		}
-		
-		if (object instanceof String) {
-			String string = (String) object;
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) throws ConversionException {
+			String string = (String) source;
 			Converter<?> converter = getConverter(toClass);
-			if (converter != null)
+			if (converter != null) {
 				return converter.getByUniqueId(string);
+			}
 			
 			if (toClass.isAssignableFrom(Date.class)) {
 				IllegalArgumentException pex = null;
@@ -257,18 +288,18 @@ public class ConversionUtil {
 				throw new ConversionException(
 				        "Error converting date - correct format (ISO8601 Long): yyyy-MM-dd'T'HH:mm:ss.SSSZ", pex);
 			} else if (toClass.isAssignableFrom(Locale.class)) {
-				return LocaleUtility.fromSpecification(object.toString());
+				return LocaleUtility.fromSpecification(string);
 			} else if (toClass.isEnum()) {
-				return Enum.valueOf((Class<? extends Enum>) toClass, object.toString().toUpperCase());
+				return Enum.valueOf((Class<? extends Enum>) toClass, string.toUpperCase());
 			} else if (toClass.isAssignableFrom(Class.class)) {
 				try {
-					return Context.loadClass((String) object);
+					return Context.loadClass(string);
 				}
 				catch (ClassNotFoundException e) {
-					throw new ConversionException("Could not convert from " + object.getClass() + " to " + toType, e);
+					throw new ConversionException("Could not convert from String to " + toType, e);
 				}
 			}
-			// look for a static valueOf(String) method (e.g. Double, Integer, Boolean)
+			
 			try {
 				Method method = toClass.getMethod("valueOf", String.class);
 				if (Modifier.isStatic(method.getModifiers()) && toClass.isAssignableFrom(method.getReturnType())) {
@@ -276,17 +307,61 @@ public class ConversionUtil {
 				}
 			}
 			catch (Exception ex) {}
-		} else if (object instanceof Map) {
-			return convertMap((Map<String, ?>) object, toClass);
+			
+			throw new ConversionException("Don't know how to convert from String to " + toType, null);
 		}
-		if (toClass.isAssignableFrom(Double.class) && object instanceof Number) {
-			return ((Number) object).doubleValue();
-		} else if (toClass.isAssignableFrom(Integer.class) && object instanceof Number) {
-			return ((Number) object).intValue();
+	}
+
+	private static class MapConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return source instanceof Map;
+		}
+		@SuppressWarnings("unchecked")
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) throws ConversionException {
+			return convertMap((Map<String, ?>) source, toClass);
+		}
+	}
+
+	private static class NumberCoercionConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return source instanceof Number && (toClass.isAssignableFrom(Double.class) || toClass.isAssignableFrom(Integer.class));
+		}
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) {
+			if (toClass.isAssignableFrom(Double.class)) {
+				return ((Number) source).doubleValue();
+			} else {
+				return ((Number) source).intValue();
+			}
+		}
+	}
+
+	private static class BooleanStringConverter implements TypeConverter {
+		@Override
+		public boolean canConvert(Object source, Class<?> toClass, Type toType) {
+			return source instanceof Boolean && toClass.isAssignableFrom(String.class);
+		}
+		@Override
+		public Object convert(Object source, Class<?> toClass, Type toType) {
+			return String.valueOf(source);
+		}
+	}
+
+	public static Object convert(Object object, Type toType) throws ConversionException {
+		if (object == null) {
+			return null;
 		}
 		
-		if (toClass.isAssignableFrom(String.class) && object instanceof Boolean) {
-			return String.valueOf(object);
+		Class<?> toClass = toType instanceof Class ? ((Class<?>) toType) : (Class<?>) (((ParameterizedType) toType)
+		        .getRawType());
+		
+		for (TypeConverter converter : converters) {
+			if (converter.canConvert(object, toClass, toType)) {
+				return converter.convert(object, toClass, toType);
+			}
 		}
 		
 		throw new ConversionException("Don't know how to convert from " + object.getClass() + " to " + toType, null);
