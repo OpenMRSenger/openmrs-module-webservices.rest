@@ -47,7 +47,6 @@ public class SearchHandlerRegistry {
 			addSearchHandler(tempSearchHandlersByIds, tempSearchHandlersByParameters, tempSearchHandlersByResource,
 			    searchHandler);
 		}
-		this.allSearchHandlers = allSearchHandlers;
 		searchHandlersByParameter = tempSearchHandlersByParameters;
 		searchHandlersByIds = tempSearchHandlersByIds;
 		searchHandlersByResource = tempSearchHandlersByResource;
@@ -234,13 +233,9 @@ public class SearchHandlerRegistry {
 			
 			for (SearchParameter parameter : parameters) {
 				CompositeSearchHandlerKeyValue parameterKey = new CompositeSearchHandlerKeyValue(searchHandler
-				        .getSearchConfig().getSupportedResource(), parameter.getName(), parameter.getValue());
-				Set<SearchHandler> list = tempSearchHandlersByParameters.get(parameterKey);
-				if (list == null) {
-					list = new HashSet<SearchHandler>();
-					tempSearchHandlersByParameters.put(parameterKey, list);
-				}
-				list.add(searchHandler);
+					.getSearchConfig().getSupportedResource(), parameter.getName(), parameter.getValue());
+				tempSearchHandlersByParameters.computeIfAbsent(parameterKey, k -> new HashSet<SearchHandler>())
+					.add(searchHandler);
 			}
 		}
 	}
