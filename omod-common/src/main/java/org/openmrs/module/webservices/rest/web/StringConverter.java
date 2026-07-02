@@ -45,51 +45,7 @@ public class StringConverter implements TypeConverter {
 		}
 		
 		if (toClass.isAssignableFrom(Date.class)) {
-			Exception pex = null;
-			String[] supportedFormats = {
-				"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSXX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSx",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSS",
-				"yyyy-MM-dd'T'HH:mm:ssZ",
-				"yyyy-MM-dd'T'HH:mm:ssXXX",
-				"yyyy-MM-dd'T'HH:mm:ssXX",
-				"yyyy-MM-dd'T'HH:mm:ssx",
-				"yyyy-MM-dd'T'HH:mm:ssX",
-				"yyyy-MM-dd'T'HH:mm:ss",
-				"yyyy-MM-dd HH:mm:ss",
-				"yyyy-MM-dd"
-			};
-			for (String format : supportedFormats) {
-				try {
-					DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
-					TemporalAccessor accessor = formatter.parseBest(string,
-						ZonedDateTime::from,
-						OffsetDateTime::from,
-						LocalDateTime::from,
-						LocalDate::from
-					);
-					
-					Instant instant;
-					if (accessor instanceof ZonedDateTime) {
-						instant = ((ZonedDateTime) accessor).toInstant();
-					} else if (accessor instanceof OffsetDateTime) {
-						instant = ((OffsetDateTime) accessor).toInstant();
-					} else if (accessor instanceof LocalDateTime) {
-						instant = ((LocalDateTime) accessor).atZone(ZoneId.systemDefault()).toInstant();
-					} else {
-						instant = ((LocalDate) accessor).atStartOfDay(ZoneId.systemDefault()).toInstant();
-					}
-					return Date.from(instant);
-				}
-				catch (Exception ex) {
-					pex = ex;
-				}
-			}
-			throw new ConversionException(
-			        "Error converting date - correct format (ISO8601 Long): yyyy-MM-dd'T'HH:mm:ss.SSSZ", pex);
+			return convertToDate(string);
 		} else if (toClass.isAssignableFrom(Locale.class)) {
 			return LocaleUtility.fromSpecification(string);
 		} else if (toClass.isEnum()) {
@@ -109,8 +65,62 @@ public class StringConverter implements TypeConverter {
 				return method.invoke(null, string);
 			}
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			// Intentionally ignored
+		}
 		
 		throw new ConversionException("Don't know how to convert from String to " + toType, null);
+	}
+
+	private Date convertToDate(String string) throws ConversionException {
+		Exception pex = null;
+		String[] supportedFormats = {
+			"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSXX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSx",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSS",
+			"yyyy-MM-dd'T'HH:mm:ssZ",
+			"yyyy-MM-dd'T'HH:mm:ssXXX",
+			"yyyy-MM-dd'T'HH:mm:ssXX",
+			"yyyy-MM-dd'T'HH:mm:ssx",
+			"yyyy-MM-dd'T'HH:mm:ssX",
+			"yyyy-MM-dd'T'HH:mm:ss",
+			"yyyy-MM-dd HH:mm:ss",
+			"yyyy-MM-dd"
+		};
+		for (String format : supportedFormats) {
+			try {
+				return parseDateWithFormat(string, format);
+			}
+			catch (Exception ex) {
+				pex = ex;
+			}
+		}
+		throw new ConversionException(
+		        "Error converting date - correct format (ISO8601 Long): yyyy-MM-dd'T'HH:mm:ss.SSSZ", pex);
+	}
+
+	private Date parseDateWithFormat(String string, String format) {
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+		TemporalAccessor accessor = formatter.parseBest(string,
+			ZonedDateTime::from,
+			OffsetDateTime::from,
+			LocalDateTime::from,
+			LocalDate::from
+		);
+		
+		Instant instant;
+		if (accessor instanceof ZonedDateTime) {
+			instant = ((ZonedDateTime) accessor).toInstant();
+		} else if (accessor instanceof OffsetDateTime) {
+			instant = ((OffsetDateTime) accessor).toInstant();
+		} else if (accessor instanceof LocalDateTime) {
+			instant = ((LocalDateTime) accessor).atZone(ZoneId.systemDefault()).toInstant();
+		} else {
+			instant = ((LocalDate) accessor).atStartOfDay(ZoneId.systemDefault()).toInstant();
+		}
+		return Date.from(instant);
 	}
 }
