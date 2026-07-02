@@ -329,11 +329,11 @@ public class ConversionUtilTest extends BaseModuleWebContextSensitiveTest {
 				return temp;
 			}
 			@Override
-			public SimpleObject asRepresentation(Object instance, Representation rep) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
+			public SimpleObject asRepresentation(Temp instance, Representation rep) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
 				return new SimpleObject();
 			}
 			@Override
-			public Object getProperty(Object instance, String propertyName) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
+			public Object getProperty(Temp instance, String propertyName) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
 				return null;
 			}
 			@Override

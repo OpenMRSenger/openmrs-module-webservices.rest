@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-	public static List<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
+
 /**
  * Convenient helper methods for the Rest Web Services module.
  */

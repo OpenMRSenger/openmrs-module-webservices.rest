@@ -45,64 +45,76 @@ public class StringConverter implements TypeConverter {
 		}
 		
 		if (toClass.isAssignableFrom(Date.class)) {
-			Exception pex = null;
-			String[] supportedFormats = {
-				"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSXX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSx",
-				"yyyy-MM-dd'T'HH:mm:ss.SSSX",
-				"yyyy-MM-dd'T'HH:mm:ss.SSS",
-				"yyyy-MM-dd'T'HH:mm:ssZ",
-				"yyyy-MM-dd'T'HH:mm:ssXXX",
-				"yyyy-MM-dd'T'HH:mm:ssXX",
-				"yyyy-MM-dd'T'HH:mm:ssx",
-				"yyyy-MM-dd'T'HH:mm:ssX",
-				"yyyy-MM-dd'T'HH:mm:ss",
-				"yyyy-MM-dd HH:mm:ss",
-				"yyyy-MM-dd"
-			};
-			for (String format : supportedFormats) {
-				try {
-					DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
-					TemporalAccessor accessor = formatter.parseBest(string,
-						ZonedDateTime::from,
-						OffsetDateTime::from,
-						LocalDateTime::from,
-						LocalDate::from
-					);
-					
-					Instant instant;
-					if (accessor instanceof ZonedDateTime) {
-						instant = ((ZonedDateTime) accessor).toInstant();
-					} else if (accessor instanceof OffsetDateTime) {
-						instant = ((OffsetDateTime) accessor).toInstant();
-					} else if (accessor instanceof LocalDateTime) {
-						instant = ((LocalDateTime) accessor).atZone(ZoneId.systemDefault()).toInstant();
-					} else {
-						instant = ((LocalDate) accessor).atStartOfDay(ZoneId.systemDefault()).toInstant();
-					}
-					return Date.from(instant);
-				}
-				catch (Exception ex) {
-					pex = ex;
-				}
-			}
-			throw new ConversionException(
-			        "Error converting date - correct format (ISO8601 Long): yyyy-MM-dd'T'HH:mm:ss.SSSZ", pex);
+			return convertToDate(string);
 		} else if (toClass.isAssignableFrom(Locale.class)) {
 			return LocaleUtility.fromSpecification(string);
 		} else if (toClass.isEnum()) {
 			return Enum.valueOf((Class<? extends Enum>) toClass, string.toUpperCase());
 		} else if (toClass.isAssignableFrom(Class.class)) {
-			try {
-				return Context.loadClass(string);
-			}
-			catch (ClassNotFoundException e) {
-				throw new ConversionException("Could not convert from String to " + toType, e);
-			}
+			return convertToClass(string, toType);
 		}
 		
+		return convertUsingValueOf(string, toClass, toType);
+	}
+
+	private Date convertToDate(String string) throws ConversionException {
+		Exception pex = null;
+		String[] supportedFormats = {
+			"yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSXX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSx",
+			"yyyy-MM-dd'T'HH:mm:ss.SSSX",
+			"yyyy-MM-dd'T'HH:mm:ss.SSS",
+			"yyyy-MM-dd'T'HH:mm:ssZ",
+			"yyyy-MM-dd'T'HH:mm:ssXXX",
+			"yyyy-MM-dd'T'HH:mm:ssXX",
+			"yyyy-MM-dd'T'HH:mm:ssx",
+			"yyyy-MM-dd'T'HH:mm:ssX",
+			"yyyy-MM-dd'T'HH:mm:ss",
+			"yyyy-MM-dd HH:mm:ss",
+			"yyyy-MM-dd"
+		};
+		for (String format : supportedFormats) {
+			try {
+				DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format);
+				TemporalAccessor accessor = formatter.parseBest(string,
+					ZonedDateTime::from,
+					OffsetDateTime::from,
+					LocalDateTime::from,
+					LocalDate::from
+				);
+				
+				Instant instant;
+				if (accessor instanceof ZonedDateTime) {
+					instant = ((ZonedDateTime) accessor).toInstant();
+				} else if (accessor instanceof OffsetDateTime) {
+					instant = ((OffsetDateTime) accessor).toInstant();
+				} else if (accessor instanceof LocalDateTime) {
+					instant = ((LocalDateTime) accessor).atZone(ZoneId.systemDefault()).toInstant();
+				} else {
+					instant = ((LocalDate) accessor).atStartOfDay(ZoneId.systemDefault()).toInstant();
+				}
+				return Date.from(instant);
+			}
+			catch (Exception ex) {
+				pex = ex;
+			}
+		}
+		throw new ConversionException(
+		        "Error converting date - correct format (ISO8601 Long): yyyy-MM-dd'T'HH:mm:ss.SSSZ", pex);
+	}
+
+	private Class<?> convertToClass(String string, Type toType) throws ConversionException {
+		try {
+			return Context.loadClass(string);
+		}
+		catch (ClassNotFoundException e) {
+			throw new ConversionException("Could not convert from String to " + toType, e);
+		}
+	}
+
+	private Object convertUsingValueOf(String string, Class<?> toClass, Type toType) throws ConversionException {
 		try {
 			Method method = toClass.getMethod("valueOf", String.class);
 			if (Modifier.isStatic(method.getModifiers()) && toClass.isAssignableFrom(method.getReturnType())) {
