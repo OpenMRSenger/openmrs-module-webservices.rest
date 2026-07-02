@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-
+	public static List<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
 /**
  * Convenient helper methods for the Rest Web Services module.
  */
@@ -580,11 +580,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static void setResponseStatus(Throwable ex, HttpServletResponse response) {
 		ResponseStatus ann = ex.getClass().getAnnotation(ResponseStatus.class);
 		if (ann != null) {
-			if (StringUtils.isNotBlank(ann.reason())) {
-				response.setStatus(ann.value().value(), ann.reason());
-			} else {
-				response.setStatus(ann.value().value());
-			}
+			response.setStatus(ann.value().value());
 		} else {
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
@@ -615,7 +611,9 @@ public class RestUtil implements GlobalPropertyListener {
 			String uri = (String) PropertyUtils.getProperty(created, "uri");
 			response.addHeader("Location", uri);
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			log.debug("Unable to set Location header for created resource", ex);
+		}
 		return created;
 	}
 	
@@ -632,7 +630,9 @@ public class RestUtil implements GlobalPropertyListener {
 			String uri = (String) PropertyUtils.getProperty(updated, "uri");
 			response.addHeader("Location", uri);
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			log.debug("Unable to set Location header for updated resource", ex);
+		}
 		return updated;
 	}
 	
@@ -675,7 +675,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <D extends OpenmrsData, C extends Collection<D>> Set<D> removeVoidedData(C input) {
 		Set<D> data = new LinkedHashSet<D>();
 		for (D d : input) {
-			if (!d.isVoided()) {
+			if (!d.getVoided()) {
 				data.add(d);
 			}
 		}
@@ -692,7 +692,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <M extends OpenmrsMetadata, C extends Collection<M>> Set<M> removeRetiredData(C input) {
 		Set<M> data = new LinkedHashSet<M>();
 		for (M m : input) {
-			if (!m.isRetired()) {
+			if (!m.getRetired()) {
 				data.add(m);
 			}
 		}
@@ -743,7 +743,7 @@ public class RestUtil implements GlobalPropertyListener {
 	 * @param suffix the ending text on name. eg "Resource.class"
 	 * @return the list of classes.
 	 */
-	public static ArrayList<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
+	public static List<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
 		return ClasspathPackageScanner.getClassesForPackage(pkgname, suffix);
 	}
 	

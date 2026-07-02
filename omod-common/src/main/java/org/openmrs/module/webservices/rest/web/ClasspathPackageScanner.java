@@ -42,7 +42,9 @@ public class ClasspathPackageScanner {
 				                + ") does not appear to be a valid URL / URI.  Strange, since we got it from the system...",
 				        e);
 			}
-			catch (IllegalArgumentException ex) {}
+			catch (IllegalArgumentException ex) {
+				directory = null;
+			}
 			
 			if (directory != null && directory.exists()) {
 				scanDirectory(directory, pkgname, suffix, classes);
@@ -76,10 +78,10 @@ public class ClasspathPackageScanner {
 	}
 	
 	private static void scanJar(URL resource, String relPath, String pkgname, String suffix, ArrayList<Class<?>> classes) throws IOException {
+		String fullPath = resource.getFile();
+		String jarPath = fullPath.replaceFirst("[.]jar[!].*", ".jar").replaceFirst("file:", "");
 		JarFile jarFile = null;
 		try {
-			String fullPath = resource.getFile();
-			String jarPath = fullPath.replaceFirst("[.]jar[!].*", ".jar").replaceFirst("file:", "");
 			jarFile = new JarFile(jarPath);
 			
 			Enumeration<JarEntry> entries = jarFile.entries();
@@ -91,27 +93,27 @@ public class ClasspathPackageScanner {
 					continue;
 				}
 				
-				if (entryName.startsWith(relPath) && entryName.length() > (relPath.length() + "/".length())) {
-					String className = entryName.replace('/', '.').replace('\\', '.').replace(".class", "");
-					try {
-						Class<?> cls = Class.forName(className);
-						if (!cls.isInterface()) {
-							classes.add(cls);
+						String className = entryName.replace('/', '.').replace('\\', '.').replace(".class", "");
+						try {
+							Class<?> cls = Class.forName(className);
+							if (!cls.isInterface()) {
+								classes.add(cls);
+							}
 						}
-					}
-					catch (ClassNotFoundException e) {
-						throw new RuntimeException("ClassNotFoundException loading " + className);
-					}
+						catch (ClassNotFoundException e) {
+							throw new RuntimeException("ClassNotFoundException loading " + className);
+						}
+					addClassIfConcrete(className, classes);
 				}
 			}
 		}
-		catch (IOException e) {
-			throw new RuntimeException(pkgname + " (" + resource + ") does not appear to be a valid package", e);
-		}
-		finally {
-			if (jarFile != null) {
-				jarFile.close();
+				throw new RuntimeException(pkgname + " (" + resource + ") does not appear to be a valid package", e);
 			}
+			finally {
+				if (jarFile != null) {
+					jarFile.close();
+				}
+			throw new IllegalStateException("ClassNotFoundException loading " + className, e);
 		}
+
 	}
-}
