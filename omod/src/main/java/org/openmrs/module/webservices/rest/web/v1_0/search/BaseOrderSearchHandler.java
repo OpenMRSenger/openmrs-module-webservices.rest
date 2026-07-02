@@ -130,7 +130,7 @@ public abstract class BaseOrderSearchHandler implements SearchHandler {
 	 * Converts a string boolean representation into a boolean value.
 	 */
 	protected boolean parseBoolean(String boolStr) {
-		return StringUtils.isNotBlank(boolStr) ? Boolean.parseBoolean(boolStr) : false;
+		return StringUtils.isNotBlank(boolStr) ? Boolean.parseBoolean(boolStr);
 	}
 	
 	/**
