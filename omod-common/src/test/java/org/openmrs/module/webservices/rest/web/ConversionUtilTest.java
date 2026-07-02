@@ -311,7 +311,53 @@ public class ConversionUtilTest extends BaseModuleWebContextSensitiveTest {
 	public void getTypeVariableClass_shouldThrowIllegalArgumentExceptionWhenTypeVariableIsNull() throws Exception {
 		ConversionUtil.getTypeVariableClass(Temp.class, null);
 	}
-	
+	/**
+	 * @verifies extract UUID from URI inside map
+	 * @see ConversionUtil#convertMap(Map, Class)
+	 */
+	@Test
+	public void convertMap_shouldExtractUuidFromUri() throws Exception {
+		org.openmrs.module.webservices.rest.web.resource.api.Converter<Temp> dummyConverter = new org.openmrs.module.webservices.rest.web.resource.api.Converter<Temp>() {
+			@Override
+			public Temp newInstance(String type) {
+				return new Temp();
+			}
+			@Override
+			public Temp getByUniqueId(String string) {
+				Temp temp = new Temp();
+				Assert.assertEquals("e46430d4-1a91-11e2-9b2c-969472e3895e", string);
+				return temp;
+			}
+			@Override
+			public SimpleObject asRepresentation(Object instance, Representation rep) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
+				return new SimpleObject();
+			}
+			@Override
+			public Object getProperty(Object instance, String propertyName) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
+				return null;
+			}
+			@Override
+			public void setProperty(Object instance, String propertyName, Object value) throws org.openmrs.module.webservices.rest.web.response.ConversionException {
+			}
+		};
+		
+		java.lang.reflect.Field cacheField = ConversionUtil.class.getDeclaredField("converterCache");
+		cacheField.setAccessible(true);
+		java.util.concurrent.ConcurrentMap cache = (java.util.concurrent.ConcurrentMap) cacheField.get(null);
+		cache.put(Temp.class, dummyConverter);
+		
+		try {
+			SimpleObject map = new SimpleObject();
+			map.put("uuid", "http://localhost:8080/openmrs/ws/rest/v1/temp/e46430d4-1a91-11e2-9b2c-969472e3895e");
+			
+			Temp resolved = (Temp) ConversionUtil.convert(map, Temp.class);
+			Assert.assertNotNull(resolved);
+		}
+		finally {
+			cache.remove(Temp.class);
+		}
+	}
+
 	public abstract class BaseGenericType<T> {
 		
 		private T value;
