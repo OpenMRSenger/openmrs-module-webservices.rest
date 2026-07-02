@@ -1,14 +1,14 @@
-# Design Comparison: ConversionUtil
+# Ontwerpvergelijking & Refactoring Blauwdruk
 
-This document provides a UML representation, maintainability comparison, and test analysis of the original design of ConversionUtil (located at `omod-common/src/main/java/org/openmrs/module/webservices/rest/web/ConversionUtil.java`) with the new refactored structure.
+Dit document biedt een UML-weergave, onderhoudbaarheidsvergelijking en refactoringsplannen voor de klassen en methoden in de OpenMRS Web Services REST-module die onze onderhoudbaarheidswaarden schenden.
 
 ---
 
-## 1. Original Design (Monolithic)
+## 1. Origineel Ontwerp (Monolithisch)
 
-In the original design, `convert(Object, Type)` is a single, complex method that handles all types of conversion internally, leading to high cognitive complexity and poor readability.
+In het originele ontwerp is `convert(Object, Type)` een enkele, complexe methode die alle typen conversie intern afhandelt, wat leidt tot een hoge cognitieve complexiteit en slechte leesbaarheid.
 
-### Class Diagram (Original)
+### Klasse Diagram (Origineel)
 ```mermaid
 classDiagram
     class ConversionUtil {
@@ -21,154 +21,188 @@ classDiagram
     }
 ```
 
-### Flowchart (Original)
+### Stroomdiagram (Origineel)
 ```mermaid
 flowchart TD
-    Start([convert object, toType]) --> ResolveClass[Resolve target toClass]
-    ResolveClass --> CheckCollection{Is Collection or Array?}
+    Start([convert object, toType]) --> ResolveClass[Bepaal target toClass]
+    ResolveClass --> CheckCollection{Is Collectie of Array?}
     
-    CheckCollection -- Yes --> CheckArray{Is Array?}
-    CheckArray -- Yes --> ConvertArrayLoop[Loop: convert element with reflection and recursive convert call]
-    CheckArray -- No --> TypeCollection[Instantiate TreeSet/HashSet/ArrayList]
-    TypeCollection --> CheckParam{Has Generic Type Info?}
-    CheckParam -- Yes --> LoopGeneric[Loop: convert and add element]
-    CheckParam -- No --> AddAll[addAll non-type-safe]
+    CheckCollection -- Ja --> CheckArray{Is Array?}
+    CheckArray -- Ja --> ConvertArrayLoop[Lus: converteer element met reflectie en recursieve convert aanroep]
+    CheckArray -- No --> TypeCollection[Instantieer TreeSet/HashSet/ArrayList]
+    TypeCollection --> CheckParam{Heeft Generieke Type Info?}
+    CheckParam -- Ja --> LoopGeneric[Lus: converteer en voeg element toe]
+    CheckParam -- Nee --> AddAll[addAll op niet-type-veilige manier]
     
-    CheckCollection -- No --> CheckAssign{Is Assignable?}
-    CheckAssign -- Yes --> RetObj[Return object]
-    CheckAssign -- No --> CoerceFloat[Coerce Float/Double]
+    CheckCollection -- Nee --> CheckAssign{Is Toewijsbaar?}
+    CheckAssign -- Ja --> RetObj[Return object]
+    CheckAssign -- Nee --> CoerceFloat[Coerceer Float/Double]
     CoerceFloat --> CheckStr{Is String?}
     
-    CheckStr -- Yes --> FindConverter{Has Converter?}
-    FindConverter -- Yes --> GetById[converter.getByUniqueId]
-    FindConverter -- No --> CheckDate{Is Date?}
-    CheckDate -- Yes --> DateLoop[Loop supported Date Formats, try parsing via DateTime.parse]
-    CheckDate -- No --> CheckLocale{Is Locale?}
+    CheckStr -- Ja --> FindConverter{Heeft Converter?}
+    FindConverter -- Ja --> GetById[converter.getByUniqueId]
+    FindConverter -- Nee --> CheckDate{Is Datum?}
+    CheckDate -- Ja --> DateLoop[Lus door ondersteunde datumformaten, probeer parsing via DateTime.parse]
+    CheckDate -- Nee --> CheckLocale{Is Locale?}
     CheckLocale -- Yes --> LocaleUtility[LocaleUtility.fromSpecification]
-    CheckLocale -- No --> CheckEnum{Is Enum?}
+    CheckLocale -- Nee --> CheckEnum{Is Enum?}
     CheckEnum -- Yes --> EnumValue[Enum.valueOf]
-    CheckEnum -- No --> CheckClass{Is Class?}
+    CheckLocale -- Nee --> CheckClass{Is Klasse?}
     CheckClass -- Yes --> ContextLoad[Context.loadClass]
-    CheckClass -- No --> ValueOf[Try static valueOf String reflection method]
+    CheckClass -- Nee --> ValueOf[Probeer statische valueOf String reflectie methode]
     
-    CheckStr -- No --> CheckMap{Is Map?}
-    CheckMap -- Yes --> ConvertMap[convertMap]
-    CheckMap -- No --> CoerceNum[Coerce Double/Integer/Boolean]
+    CheckStr -- Nee --> CheckMap{Is Map?}
+    CheckMap -- Ja --> ConvertMap[convertMap]
+    CheckMap -- Nee --> CoerceNum[Coerceer Double/Integer/Boolean]
 ```
 
 ---
 
-## 2. Altered Design (Modularized)
+## 2. Nieuw Ontwerp (Modularisatie & Strategy/Registry Patroon)
 
-The refactored design decomposes the complex logic into distinct private helper methods, isolating different conversion concerns.
+Het gerefactorde ontwerp splitst de monoliet op door gebruik te maken van een **Strategy Patroon** in combinatie met een **Registry**. `ConversionUtil` delegeert de specifieke conversies naar afzonderlijke `TypeConverter`-implementaties die geregistreerd staan in een lijst.
 
-### Class Diagram (Altered)
+### Klasse Diagram (Nieuw)
 ```mermaid
 classDiagram
     class ConversionUtil {
-        +DATE_FORMAT : String
+        -converters : List~TypeConverter~
         +convert(Object object, Type toType) Object
-        +convertToRepresentation(Object object, Representation rep) Object
-        +convertMap(Map~String, ?~ map, Class~?~ toClass) Object
-        +getTypeVariableClass(Class~?~ instanceClass, TypeVariable~?~ typeVariable) Class~?~
-        +getCustomRepresentationDescription(CustomRepresentation representation) DelegatingResourceDescription
-        -convertCollectionOrArray(Object object, Type toType, Class~?~ toClass) Object
-        -convertToArray(Collection~?~ input, Class~?~ targetElementType) Object
-        -convertToCollection(Collection~?~ input, Type toType, Class~?~ toClass) Collection
-        -convertSingle(Object object, Type toType, Class~?~ toClass) Object
-        -convertFromString(String string, Type toType, Class~?~ toClass) Object
-        -convertToDate(String string) Date
     }
+    class TypeConverter {
+        <<interface>>
+        +canConvert(Object, Type) boolean
+        +convert(Object, Type) Object
+    }
+    class CollectionConverter {
+        +canConvert(Object, Type) boolean
+        +convert(Object, Type) Object
+    }
+    class StringConverter {
+        +canConvert(Object, Type) boolean
+        +convert(Object, Type) Object
+    }
+    class MapConverter {
+        +canConvert(Object, Type) boolean
+        +convert(Object, Type) Object
+    }
+
+    ConversionUtil --> TypeConverter : delegeert naar
+    TypeConverter <|.. CollectionConverter
+    TypeConverter <|.. StringConverter
+    TypeConverter <|.. MapConverter
 ```
 
-### Flowchart (Altered)
+### Stroomdiagram (Nieuw)
 ```mermaid
 flowchart TD
-    Start([convert object, toType]) --> ResolveClass[Resolve target toClass]
-    ResolveClass --> CheckCollection{Is Collection or Array?}
-    
-    CheckCollection -- Yes --> CallColl[convertCollectionOrArray]
-    CallColl --> CheckArray{Is Array?}
-    CheckArray -- Yes --> CallArray[convertToArray]
-    CheckArray -- No --> CallCollection[convertToCollection]
-    
-    CheckCollection -- No --> CallSingle[convertSingle]
-    CallSingle --> CheckAssign{Is Assignable?}
-    CheckAssign -- Yes --> RetObj[Return object]
-    CheckAssign -- No --> CheckStr{Is String?}
-    
-    CheckStr -- Yes --> CallStr[convertFromString]
-    CallStr --> CheckDate{Is Date?}
-    CheckDate -- Yes --> CallDate[convertToDate]
-    CheckDate -- No --> ValueOf[Try static valueOf/converter]
-    
-    CheckStr -- No --> CheckMap{Is Map?}
-    CheckMap -- Yes --> CallMap[convertMap]
-    CheckMap -- No --> CoerceNum[Coerce Numbers]
+    Start([convert object, toType]) --> ResolveClass[Bepaal toClass]
+    ResolveClass --> LoopConverters[Loop door converters]
+    LoopConverters --> CheckCanConvert{canConvert == true?}
+    CheckCanConvert -- Ja --> RunConvert[Roep converter.convert aan]
+    CheckCanConvert -- Nee --> TryNext[Probeer volgende converter]
+    TryNext --> LoopConverters
+    RunConvert --> Return[Return resultaat]
+    TryNext -- Geen converter gevonden --> Throw[Gooi ConversionException]
 ```
 
 ---
 
-## 3. Cognitive Complexity Comparison
+## 3. Cognitieve Complexiteit Vergelijking
 
-Cognitive Complexity measures how difficult a method is to understand by looking at nesting, control flow changes, and catch blocks.
+Cognitieve Complexiteit meet hoe moeilijk een methode te begrijpen is op basis van nestingsniveaus en control-flow wijzigingen.
 
-### A. Before Refactoring (Complexity: 36)
-The original `convert` method is monolithic and deeply nested:
-* Base checks (`null` check, type resolution): **+2**
-* Collection / Array conversion block: **+11** (Nesting level 3 for element loops, concrete class checks).
-* Primitive and Type coercion checks: **+5**
-* String-to-type parsing block: **+16** (Nesting level 4 for try-catch inside the date format loop, plus enum/locale/class checks).
-* Map/Number coercion checks: **+2**
+### A. Voorheen (Complexiteit: 36)
+De originele `convert` methode is monolithisch en diep genest:
+* Basis controles (`null` check, typebepaling): **+2**
+* Collectie / Array conversieblok: **+11** (Nestingniveau 3 voor lussen, typecontroles).
+* Primitive & Type coercie: **+5**
+* String-naar-type parsing: **+16** (Nestingniveau 4 door try-catch in datumlus, plus enum/locale/klasse checks).
+* Map/Boolean coercie: **+2**
 
-### B. After Refactoring (Highest Method Complexity: 8)
-By decomposing the method, the structural nesting is flattened:
+### B. Na Refactoring (Maximale Complexiteit: 8)
+Door de methode te ontleden naar losse Strategy-klassen is de nesting volledig vlak:
 
-| Method Name | Complexity | Primary Driver |
+| Methode/Klasse | Complexiteit | Belangrijkste Oorzaak |
 | :--- | :---: | :--- |
-| `convert` | **3** | Type resolution and collection routing. |
-| `convertCollectionOrArray` | **2** | Collection validation and array check. |
-| `convertToArray` | **1** | Single loop. |
-| `convertToCollection` | **6** | Collection instantiation options. |
-| `convertSingle` | **7** | Type coercion routing. |
-| `convertFromString` | **8** | Date/Locale/Enum/Class/Reflection lookups. |
-| `convertToDate` | **3** | Date format loop and try-catch. |
+| `convert` (Hoofdingang) | **3** | Typebepaling en doorlopen register. |
+| `CollectionConverter` | **6** | Type-instantiering en lus. |
+| `MapConverter` | **2** | Delegatie naar `convertMap`. |
+| `StringConverter` (inclusief Datum/Enum) | **8** | Afhandeling datum lussen en reflectie try-catches. |
 
 ---
 
-## 4. Usage & Verification Analysis
+## 4. Refactoringsplannen voor overige klassen & methoden
 
-### A. Method Usages (47 References)
-* **29 usages** in core logic (converts path variables, request params, and payload fields to domain objects).
-* **18 usages** in test suites (converts mock request values or checks assertions).
+Hieronder staan de verbeterplannen voor de overige gedetecteerde knelpunten in de codebase, gegroepeerd per oplossingspatroon.
 
-### B. Verification Strategies
-To ensure `ConversionUtil.convert` is called correctly at target places:
-1. **Mocking Static References**: In JUnit tests, isolate behavior using Mockito static mocks:
-   ```java
-   try (MockedStatic<ConversionUtil> mocked = Mockito.mockStatic(ConversionUtil.class)) {
-       mocked.when(() -> ConversionUtil.convert(any(), any())).thenReturn(expectedValue);
-       // execute and verify...
-       mocked.verify(() -> ConversionUtil.convert(inputValue, targetType));
-   }
-   ```
-2. **Integration Verification**: Validate REST requests map strings (UUIDs, ISO-8601 dates) to correct domain models inside active DB transactions.
+### Patroon A: Klasse Decompositie (Klassen > 500 LOC verkleinen)
+
+#### 1. RestUtil (918 LOC)
+* **Probleem**: Schendt het Single Responsibility Principle (SRP) door IP-matching, validatie-afhandeling, context-parsing en classpath-scanning te mixen.
+* **Refactoringsplan**:
+  * Pas het **Strategy Patroon** toe op IP-matching. Extraheer deze logica (`ipMatches`) naar een `IpMatcher`-interface en concrete klassen (`CidrIpMatcher`, `ExactIpMatcher`).
+  * Extraheer de package-scanner (`getClassesForPackage`) naar een afzonderlijke helperklasse `ClasspathPackageScanner.java`.
+  * Extraheer de Spring validatiefout-formatter (`wrapValidationErrorResponse`) naar `ValidationErrorFormatter.java`.
+* **Resultaat**: `RestUtil` krimpt naar **< 300 LOC**.
+
+#### 2. BaseDelegatingResource (903 LOC)
+* **Probleem**: Enorme basisklasse die generieke reflectie-analyse, serialisatie, caching en updates uitvoert.
+* **Refactoringsplan**:
+  * Extraheer eigenschapsbinding en reflectiemutatiechecks (`setConvertedProperties`, `setProperty`, `getProperty`) naar een aparte delegate-klasse `ResourcePropertyBinder.java`.
+* **Resultaat**: Grootte klasse daalt naar **~450 LOC**.
+
+#### 3. RestServiceImpl (738 LOC)
+* **Probleem**: Beheert serviceoperaties naast zeer verbose zoekhandler matching- en filterlogica.
+* **Refactoringsplan**:
+  * Extraheer de zoekhandler registries en filterfuncties (`getSearchHandler`, `eliminateCandidateSearchHandlersWithMissingRequiredParameters`) naar `SearchHandlerRegistry.java`.
+* **Resultaat**: `RestServiceImpl` krimpt naar **~400 LOC**.
 
 ---
 
-## 5. Coverage Gaps (For 100% Coverage)
+### Patroon B: Methode Extractie & Nesting Verminderen (Complexe methoden vereenvoudigen)
 
-To achieve complete test coverage on the refactored code, tests in `omod-common/src/test/java/org/openmrs/module/webservices/rest/web/ConversionUtilTest.java` must cover:
+#### 4. RestUtil.getClassesForPackage (93 LOC, Complexiteit ~50)
+* **Probleem**: Diep geneste lussen en try-catch blokken die gelijktijdig bestandssystemen en JAR-stromen scannen.
+* **Refactoringsplan**:
+  * Extraheer het scannen van mappen naar `scanDirectories(File, String, List)`.
+  * Extraheer de JAR-scanner naar `scanJarConnection(JarURLConnection, String, List)`.
 
-* **Null Input**: `convert(null, toType)` must return `null`.
-* **Missing @Test Annotation**: Fix missing annotations on `convert_shouldConvertIntToDouble` and `convert_shouldConvertDoubleToInt`.
-* **Collection Format Error**: Passing single object to target collection (should throw `ConversionException`).
-* **Unsupported Collection Type**: Trying to convert to `Queue` (should throw `ConversionException`).
-* **Raw Collection type**: Verifying execution of `ret.addAll` for raw type targets.
-* **Float Primitive Coercion**: Target `Float.class` with `Double` type.
-* **Date Parsing Failure**: Invalid date formats (should throw `ConversionException` wrapping `IllegalArgumentException`).
-* **Enum Parsing Failure**: Invalid enum string names.
-* **Class Loading Failure**: Non-existent class name strings.
-* **Boolean to String**: Target `String.class` with `Boolean` type.
-* **Static valueOf Fallback**: Custom classes with static `valueOf` methods.
-* **Unsupported Conversions**: Standard incompatible types.
+#### 5. RestUtil.ipMatches (61 LOC, Complexiteit ~35)
+* **Probleem**: Complexe byte-vergelijkingen en CIDR-splitsingen uitgevoerd binnen diepe branches.
+* **Refactoringsplan**:
+  * Pas het **Strategy Patroon** toe (zie Patroon 2 in `design_patterns.md`). Delegeer de controles naar specifieke IP matchers (`CidrIpMatcher` en `ExactIpMatcher`).
+
+#### 6. RestServiceImpl.getSearchHandler & eliminateCandidateSearchHandlersWithMissingRequiredParameters
+* **Probleem**: Hoge cognitieve complexiteit (~25 en ~30) bij het controleren van handlers en filteren van parameters.
+* **Refactoringsplan**:
+  * Extraheer criteriaverificatie: delegeer parametercontroles naar een helpermethode `hasAllRequiredParameters(SearchHandler, Set)`.
+  * Vervang geneste iterators door schone Java Streams.
+
+#### 7. BaseDelegatingResource.init (37 LOC, Complexiteit ~21)
+* **Probleem**: Geneste reflectie checks om de juiste OpenMRS-versie te binden aan resources.
+* **Refactoringsplan**:
+  * Extraheer de reflectieve generieke klasse-resolutie naar een helperklasse `GenericTypeResolver`.
+
+---
+
+## 5. Analyse Gebruik & Testdekking (ConversionUtil.convert)
+
+### A. Methode Usages (47 Verwijzingen)
+* **29 aanroepen** in kernlogica (REST input mapping en UUID omzettingen).
+* **18 aanroepen** in test suites.
+
+### B. Test Gaps (Voor 100% Coverage)
+Om volledige dekking te krijgen op de refactorde code, moeten tests in `ConversionUtilTest.java` de volgende situaties dekken:
+* **Null Input**: `convert(null, toType)` moet `null` retourneren.
+* **Missende @Test Annotaties**: Herstel de missende annotations op `convert_shouldConvertIntToDouble` and `convert_shouldConvertDoubleToInt`.
+* **Collectiefout**: Single object doorgeven aan een collectie target (moet `ConversionException` gooien).
+* **Niet-ondersteund Collectietype**: Converteren naar een `Queue` type.
+* **Raw Collection type**: Verifiëren van `ret.addAll` route voor raw targets.
+* **Float Coercie**: Target `Float.class` met `Double` bronwaarde.
+* **Foutieve Datums**: Ongeldige datumformaten (moet `ConversionException` gooien).
+* **Enum Fout**: Foutieve enum namen.
+* **Klasse-laad Fout**: Ongeldige klasse naam strings.
+* **Boolean naar String**: Target `String.class` with `Boolean` type.
+* **Static valueOf**: Custom klasse met static `valueOf`.
+* **Incompatibele Typen**: Incompatibele types omzetten.

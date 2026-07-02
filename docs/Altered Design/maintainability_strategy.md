@@ -1,43 +1,43 @@
-# Maintainability Strategy & Prioritization Strategy
+# Onderhoudbaarheidsstrategie & Prioritisering
 
-This document establishes a structured approach for identifying, evaluating, and prioritizing code maintainability issues in the OpenMRS Web Services REST module.
+Dit document beschrijft een gestructureerde aanpak voor het identificeren, evalueren en prioriteren van code-onderhoudbaarheidsproblemen in de OpenMRS Web Services REST-module.
 
 ---
 
-## 1. Key Maintainability Metrics & Thresholds
+## 1. Belangrijkste Onderhoudbaarheidsstatistieken & Drempelwaarden
 
-We track 4 key metrics to determine code quality and maintainability health:
+We meten 4 belangrijke statistieken om de kwaliteit van de code en de onderhoudbaarheid te bepalen:
 
-| Metric | Description | Target Threshold |
+| Statistiek | Beschrijving | Grenswaarde |
 | :--- | :--- | :--- |
-| **Cognitive Complexity** | Measures the logical difficulty and control flow nesting of a method. | **Max 10** per method. |
-| **Unit Test Coverage** | Percentage of code lines and branches verified by unit tests. | **Min 80%** (100% preferred for core logic). |
-| **Usage (Coupling) Count** | Number of references to a class or method across the codebase. | Indicates impact weight. High coupling = High impact. |
-| **Method/Class Size** | Total lines of code (LOC). Long files are harder to read and test. | **Max 81 LOC** per method, **Max 500 LOC** per class. |
+| **Cognitieve Complexiteit** | Meet de logische moeilijkheid en nestingsdiepte van een methode. | **Max 10** per methode. |
+| **Unit Test Coverage** | Percentage van de coderegels en vertakkingen gedekt door unit-tests. | **Min 80%** (100% aanbevolen voor kernlogica). |
+| **Usage (Coupling) Count** | Aantal koppelingen/verwijzingen naar een klasse of methode in de codebase. | Geeft impact aan. Hoge koppeling = Hoge impact. |
+| **Methode/Klasse Grootte** | Totaal aantal regels code (LOC). Grote bestanden zijn lastiger te lezen en te testen. | **Max 81 LOC** per methode, **Max 500 LOC** per klasse. |
 
 ---
 
-## 2. Prioritization Matrix (Impact vs. Effort)
+## 2. Prioritiseringsmatrix (Impact vs. Moeite)
 
-Fixes are prioritized by plotting them on an **Impact vs. Effort** matrix to maximize return on refactoring:
+Knelpunten worden geprioriteerd door ze op een **Impact vs. Moeite** matrix te plaatsen om het rendement van refactoring te maximaliseren:
 
-| Effort \ Impact | Low Impact | High Impact |
+| Moeite \ Impact | Lage Impact | Hoge Impact |
 | :--- | :--- | :--- |
-| **Low Effort** | **Low Priority**<br>(Minor cleanups, dead code removal) | **Quick Wins (Priority 1)**<br>(Modularizing heavily used helper utilities with existing unit tests) |
-| **High Effort** | **De-prioritized**<br>(Rewriting obscure legacy features) | **Major Initiatives (Priority 2)**<br>(Refactoring base resource parent classes, reducing deep inheritance) |
+| **Weinig Moeite** | **Lage Prioriteit**<br>(Kleine opschoningen, dode code verwijderen) | **Quick Wins (Prioriteit 1)**<br>(Modulariseren van veelgebruikte helpers met bestaande unit-tests) |
+| **Veel Moeite** | **Gede-prioriteerd**<br>(Herschrijven van zelden gebruikte legacy-functionaliteiten) | **Grote Initiatieven (Prioriteit 2)**<br>(Refactoren van basis resource klassen, verminderen diepe overerving) |
 
 ---
 
-## 3. Justification for First Refactor: ConversionUtil.convert
+## 3. Rechtvaardiging voor Eerste Refactor: ConversionUtil.convert
 
-Based on this strategy, `ConversionUtil.convert` was selected as the first refactoring target:
+Op basis van deze strategie is `ConversionUtil.convert` geselecteerd als het eerste refactordoel:
 
-1. **Metrics Violations**:
-   * **Cognitive Complexity**: **36** (Target: < 10). Violates threshold due to deeply nested date parsing loops and reflection catch blocks.
-   * **Method Size**: **~120 LOC** (Target: < 81 LOC). Violates size threshold.
-2. **Impact Assessment**:
-   * **Usage**: **47 references** across the codebase (29 in source, 18 in tests). Highly central to request/response serialization. High Impact.
-3. **Effort Assessment**:
-   * **Risk**: **Low**. Guarded by 16 existing unit tests in `ConversionUtilTest.java`. Low Effort.
+1. **Schending Statistieken**:
+   * **Cognitieve Complexiteit**: **36** (Grenswaarde: < 10). Overschrijdt de limiet door diep geneste datumparsings-lussen en reflectie catch-blokken.
+   * **Methode Grootte**: **~120 LOC** (Grenswaarde: < 81 LOC). Overschrijdt de regellimiet.
+2. **Impactanalyse**:
+   * **Gebruik**: **47 verwijzingen** in de codebase (29 in broncode, 18 in tests). Cruciaal voor REST-serialisatie. Hoge Impact.
+3. **Moeiteanalyse**:
+   * **Risico**: **Laag**. Gedekt door 16 bestaande unit-tests in `ConversionUtilTest.java`. Weinig Moeite.
 
-*Conclusion*: Fits **Quick Wins (Priority 1)** quadrant. Refactoring will reduce cognitive complexity from **36 to 3** and resolve deprecation warnings with minimal risk.
+*Conclusie*: Valt in het **Quick Wins (Prioriteit 1)** kwadrant. De refactor verlaagt de cognitieve complexiteit van **36 naar 3** en lost deprecation-waarschuwingen op met minimaal risico.
