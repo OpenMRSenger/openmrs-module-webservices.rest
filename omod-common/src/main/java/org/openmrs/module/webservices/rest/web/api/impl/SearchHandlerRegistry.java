@@ -74,6 +74,32 @@ public class SearchHandlerRegistry {
 	public SearchHandler getSearchHandler(String resourceName, Map<String, String[]> parameters, RestHelperService restHelperService) throws APIException {
 		initializeSearchHandlers(restHelperService);
 		
+		String[] searchIds = parameters.get(RestConstants.REQUEST_PROPERTY_FOR_SEARCH_ID);
+		if (searchIds != null && searchIds.length > 0) {
+			return findSearchHandlerById(resourceName, searchIds[0]);
+		}
+		
+		Set<SearchParameter> searchParameters = extractSearchParameters(parameters);
+		Set<SearchHandler> candidateSearchHandlers = findCandidateSearchHandlers(resourceName, searchParameters);
+		
+		if (candidateSearchHandlers != null) {
+			eliminateCandidateSearchHandlersWithMissingRequiredParameters(candidateSearchHandlers, searchParameters);
+		}
+		
+		return resolveCandidateSearchHandler(candidateSearchHandlers);
+	}
+	
+	private SearchHandler findSearchHandlerById(String resourceName, String searchId) throws APIException {
+		SearchHandler searchHandler = searchHandlersByIds.get(new CompositeSearchHandlerKeyValue(resourceName,
+		        searchId));
+		if (searchHandler == null) {
+			throw new InvalidSearchException("The search with id '" + searchId + "' for '" + resourceName
+			        + "' resource is not recognized");
+		}
+		return searchHandler;
+	}
+	
+	private Set<SearchParameter> extractSearchParameters(Map<String, String[]> parameters) {
 		Set<SearchParameter> searchParameters = new HashSet<SearchParameter>();
 		for (Map.Entry<String, String[]> parameter : parameters.entrySet()) {
 			if (!RestConstants.SPECIAL_REQUEST_PARAMETERS.contains(parameter.getKey())
@@ -81,19 +107,10 @@ public class SearchHandlerRegistry {
 				searchParameters.add(new SearchParameter(parameter.getKey(), parameter.getValue()[0]));
 			}
 		}
-		
-		String[] searchIds = parameters.get(RestConstants.REQUEST_PROPERTY_FOR_SEARCH_ID);
-		if (searchIds != null && searchIds.length > 0) {
-			SearchHandler searchHandler = searchHandlersByIds.get(new CompositeSearchHandlerKeyValue(resourceName,
-			        searchIds[0]));
-			if (searchHandler == null) {
-				throw new InvalidSearchException("The search with id '" + searchIds[0] + "' for '" + resourceName
-				        + "' resource is not recognized");
-			} else {
-				return searchHandler;
-			}
-		}
-		
+		return searchParameters;
+	}
+	
+	private Set<SearchHandler> findCandidateSearchHandlers(String resourceName, Set<SearchParameter> searchParameters) {
 		Set<SearchHandler> candidateSearchHandlers = null;
 		for (SearchParameter param : searchParameters) {
 			Set<SearchHandler> searchHandlers = searchHandlersByParameter.get(new CompositeSearchHandlerKeyValue(
@@ -101,8 +118,9 @@ public class SearchHandlerRegistry {
 			if (searchHandlers == null) {
 				searchHandlers = searchHandlersByParameter.get(new CompositeSearchHandlerKeyValue(resourceName, param
 				        .getName()));
-				if (searchHandlers == null)
+				if (searchHandlers == null) {
 					return null;
+				}
 			}
 			if (candidateSearchHandlers == null) {
 				candidateSearchHandlers = new HashSet<SearchHandler>();
@@ -111,32 +129,7 @@ public class SearchHandlerRegistry {
 				candidateSearchHandlers.retainAll(searchHandlers);
 			}
 		}
-		
-		if (candidateSearchHandlers == null) {
-			return null;
-		} else {
-			eliminateCandidateSearchHandlersWithMissingRequiredParameters(candidateSearchHandlers, searchParameters);
-			
-			if (candidateSearchHandlers.isEmpty()) {
-				return null;
-			} else if (candidateSearchHandlers.size() == 1) {
-				return candidateSearchHandlers.iterator().next();
-			}
-			
-			for (SearchHandler candidateSearchHandler : candidateSearchHandlers) {
-				if ("default".equals(candidateSearchHandler.getSearchConfig().getId())) {
-					return candidateSearchHandler;
-				}
-			}
-
-			List<String> candidateSearchHandlerIds = new ArrayList<String>();
-			for (SearchHandler candidateSearchHandler : candidateSearchHandlers) {
-				candidateSearchHandlerIds.add(RestConstants.REQUEST_PROPERTY_FOR_SEARCH_ID + "="
-						+ candidateSearchHandler.getSearchConfig().getId());
-			}
-			throw new InvalidSearchException("The search is ambiguous. Please specify "
-					+ StringUtils.join(candidateSearchHandlerIds, " or "));
-		}
+		return candidateSearchHandlers;
 	}
 	
 	private void eliminateCandidateSearchHandlersWithMissingRequiredParameters(Set<SearchHandler> candidateSearchHandlers,
@@ -144,37 +137,60 @@ public class SearchHandlerRegistry {
 		Iterator<SearchHandler> it = candidateSearchHandlers.iterator();
 		while (it.hasNext()) {
 			SearchHandler candidateSearchHandler = it.next();
-			boolean remove = true;
-			
-			for (SearchQuery candidateSearchQueries : candidateSearchHandler.getSearchConfig().getSearchQueries()) {
-				Set<SearchParameter> requiredParameters = new HashSet<SearchParameter>(
-				        candidateSearchQueries.getRequiredParameters());
-				
-				Iterator<SearchParameter> iterator = requiredParameters.iterator();
-				while (iterator.hasNext()) {
-					SearchParameter requiredParameter = iterator.next();
-					for (SearchParameter param : searchParameters) {
-						if (requiredParameter.getValue() == null) {
-							if (requiredParameter.getName().equals(param.getName())) {
-								iterator.remove();
-							}
-						} else {
-							if (requiredParameter.equals(param)) {
-								iterator.remove();
-							}
-						}
-					}
-				}
-				if (requiredParameters.isEmpty()) {
-					remove = false;
-					break;
-				}
-			}
-			
-			if (remove) {
+			if (!hasAllRequiredParameters(candidateSearchHandler, searchParameters)) {
 				it.remove();
 			}
 		}
+	}
+	
+	private boolean hasAllRequiredParameters(SearchHandler candidateSearchHandler, Set<SearchParameter> searchParameters) {
+		for (SearchQuery query : candidateSearchHandler.getSearchConfig().getSearchQueries()) {
+			Set<SearchParameter> requiredParameters = new HashSet<SearchParameter>(
+			        query.getRequiredParameters());
+			
+			Iterator<SearchParameter> iterator = requiredParameters.iterator();
+			while (iterator.hasNext()) {
+				SearchParameter requiredParameter = iterator.next();
+				for (SearchParameter param : searchParameters) {
+					if (requiredParameter.getValue() == null) {
+						if (requiredParameter.getName().equals(param.getName())) {
+							iterator.remove();
+						}
+					} else {
+						if (requiredParameter.equals(param)) {
+							iterator.remove();
+						}
+					}
+				}
+			}
+			if (requiredParameters.isEmpty()) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	private SearchHandler resolveCandidateSearchHandler(Set<SearchHandler> candidateSearchHandlers) throws APIException {
+		if (candidateSearchHandlers == null || candidateSearchHandlers.isEmpty()) {
+			return null;
+		}
+		if (candidateSearchHandlers.size() == 1) {
+			return candidateSearchHandlers.iterator().next();
+		}
+		
+		for (SearchHandler candidateSearchHandler : candidateSearchHandlers) {
+			if ("default".equals(candidateSearchHandler.getSearchConfig().getId())) {
+				return candidateSearchHandler;
+			}
+		}
+
+		List<String> candidateSearchHandlerIds = new ArrayList<String>();
+		for (SearchHandler candidateSearchHandler : candidateSearchHandlers) {
+			candidateSearchHandlerIds.add(RestConstants.REQUEST_PROPERTY_FOR_SEARCH_ID + "="
+					+ candidateSearchHandler.getSearchConfig().getId());
+		}
+		throw new InvalidSearchException("The search is ambiguous. Please specify "
+				+ StringUtils.join(candidateSearchHandlerIds, " or "));
 	}
 	
 	private void addSearchHandler(Map<CompositeSearchHandlerKeyValue, SearchHandler> tempSearchHandlersByIds,
