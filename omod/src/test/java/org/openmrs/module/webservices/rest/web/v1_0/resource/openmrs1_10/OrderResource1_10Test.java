@@ -96,4 +96,85 @@ public class OrderResource1_10Test extends BaseDelegatingResourceTest<OrderResou
 		return RestTestConstants1_10.ORDER_UUID;
 	}
 	
+	@org.junit.Test
+	public void getOrders_shouldGetOrdersForPatient() throws Exception {
+		org.openmrs.Patient patient = Context.getPatientService().getPatientByUuid("5946f880-b197-400b-9caa-a3c661d23041");
+		org.openmrs.module.webservices.rest.web.RequestContext context = new org.openmrs.module.webservices.rest.web.RequestContext();
+		org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+		request.setParameter("patient", "5946f880-b197-400b-9caa-a3c661d23041");
+		request.setParameter("status", "any");
+		request.setParameter("careSetting", "6f0c9a92-6f24-11e3-af88-005056821db0");
+		context.setRequest(request);
+		
+		org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order> result = (org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order>) getResource().getOrders(patient, null, context);
+		org.junit.Assert.assertNotNull(result);
+		org.junit.Assert.assertEquals(2, result.getPageOfResults().size());
+	}
+	
+	@org.junit.Test
+	public void getOrders_shouldFilterByOrderType() throws Exception {
+		org.openmrs.Patient patient = Context.getPatientService().getPatientByUuid("5946f880-b197-400b-9caa-a3c661d23041");
+		org.openmrs.OrderType orderType = Context.getOrderService().getOrderTypeByUuid("131168f4-15f5-102d-96e4-000c29c2a5d7"); // Drug order type
+		org.openmrs.module.webservices.rest.web.RequestContext context = new org.openmrs.module.webservices.rest.web.RequestContext();
+		org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+		request.setParameter("patient", "5946f880-b197-400b-9caa-a3c661d23041");
+		request.setParameter("status", "any");
+		request.setParameter("careSetting", "6f0c9a92-6f24-11e3-af88-005056821db0");
+		context.setRequest(request);
+		
+		org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order> result = (org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order>) getResource().getOrders(patient, orderType, context);
+		org.junit.Assert.assertNotNull(result);
+		org.junit.Assert.assertEquals(2, result.getPageOfResults().size());
+	}
+	
+	@org.junit.Test
+	public void getOrders_shouldSortOrders() throws Exception {
+		org.openmrs.Patient patient = Context.getPatientService().getPatientByUuid("5946f880-b197-400b-9caa-a3c661d23041");
+		org.openmrs.module.webservices.rest.web.RequestContext context = new org.openmrs.module.webservices.rest.web.RequestContext();
+		org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+		request.setParameter("patient", "5946f880-b197-400b-9caa-a3c661d23041");
+		request.setParameter("sort", "ASC");
+		request.setParameter("status", "any");
+		request.setParameter("careSetting", "6f0c9a92-6f24-11e3-af88-005056821db0");
+		context.setRequest(request);
+		
+		org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order> result = (org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order>) getResource().getOrders(patient, null, context);
+		org.junit.Assert.assertNotNull(result);
+		org.junit.Assert.assertEquals(2, result.getPageOfResults().size());
+	}
+	
+	@org.junit.Test
+	public void doSearch_shouldDelegateToDrugOrderSubclassHandler() throws Exception {
+		org.openmrs.module.webservices.rest.web.RequestContext context = new org.openmrs.module.webservices.rest.web.RequestContext();
+		org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+		request.setParameter("patient", "5946f880-b197-400b-9caa-a3c661d23041");
+		request.setParameter("status", "any");
+		request.setParameter("careSetting", "6f0c9a92-6f24-11e3-af88-005056821db0");
+		context.setRequest(request);
+		context.setType("drugorder");
+		
+		org.openmrs.module.webservices.rest.web.resource.api.PageableResult result = getResource().doSearch(context);
+		org.junit.Assert.assertNotNull(result);
+		org.junit.Assert.assertTrue(result instanceof org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging);
+		org.junit.Assert.assertEquals(2, ((org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order>) result).getPageOfResults().size());
+	}
+	
+	@org.junit.Test
+	public void doSearch_shouldDelegateToTestOrderSubclassHandler() throws Exception {
+		org.openmrs.module.webservices.rest.web.RequestContext context = new org.openmrs.module.webservices.rest.web.RequestContext();
+		org.springframework.mock.web.MockHttpServletRequest request = new org.springframework.mock.web.MockHttpServletRequest();
+		request.setParameter("patient", "5946f880-b197-400b-9caa-a3c661d23041");
+		request.setParameter("status", "any");
+		request.setParameter("careSetting", "6f0c9a92-6f24-11e3-af88-005056821db0");
+		context.setRequest(request);
+		context.setType("testorder");
+		
+		org.openmrs.module.webservices.rest.web.resource.api.PageableResult result = getResource().doSearch(context);
+		org.junit.Assert.assertNotNull(result);
+		org.junit.Assert.assertTrue(result instanceof org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging);
+		// Let's assert that it successfully ran and returned the pageable result (even if size is 0 for test orders)
+		org.junit.Assert.assertNotNull(((org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging<Order>) result).getPageOfResults());
+	}
 }
+
+
