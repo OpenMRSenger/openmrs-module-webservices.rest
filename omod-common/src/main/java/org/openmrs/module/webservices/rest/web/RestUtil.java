@@ -20,40 +20,31 @@ import org.openmrs.OpenmrsMetadata;
 import org.openmrs.api.GlobalPropertyListener;
 import org.openmrs.api.ValidationException;
 import org.openmrs.api.context.Context;
-import org.openmrs.messagesource.MessageSourceService;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.api.RestService;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.Resource;
 import org.openmrs.module.webservices.rest.web.resource.api.SubResource;
-import org.openmrs.util.OpenmrsClassLoader;
 import org.openmrs.util.PrivilegeConstants;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.ServletRequestUtils;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-	public static List<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
+
+ 
 /**
  * Convenient helper methods for the Rest Web Services module.
  */
@@ -675,7 +666,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <D extends OpenmrsData, C extends Collection<D>> Set<D> removeVoidedData(C input) {
 		Set<D> data = new LinkedHashSet<D>();
 		for (D d : input) {
-			if (!d.getVoided()) {
+			if (!Boolean.TRUE.equals(d.getVoided())) {
 				data.add(d);
 			}
 		}
@@ -692,7 +683,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <M extends OpenmrsMetadata, C extends Collection<M>> Set<M> removeRetiredData(C input) {
 		Set<M> data = new LinkedHashSet<M>();
 		for (M m : input) {
-			if (!m.getRetired()) {
+			if (!Boolean.TRUE.equals(m.getRetired())) {
 				data.add(m);
 			}
 		}

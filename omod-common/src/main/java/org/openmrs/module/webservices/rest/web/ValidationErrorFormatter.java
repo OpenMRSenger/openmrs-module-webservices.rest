@@ -20,7 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ValidationErrorFormatter {
+
 	
+	
+	private ValidationErrorFormatter() {
+	}
+
 	private static final String PROPERTY_MESSAGE = "message";
 	
 	@SuppressWarnings("unchecked")

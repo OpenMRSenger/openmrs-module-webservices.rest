@@ -42,7 +42,7 @@ public class SearchHandlerRegistry {
 		Map<CompositeSearchHandlerKeyValue, Set<SearchHandler>> tempSearchHandlersByParameters = new HashMap<CompositeSearchHandlerKeyValue, Set<SearchHandler>>();
 		Map<String, Set<SearchHandler>> tempSearchHandlersByResource = new HashMap<String, Set<SearchHandler>>();
 		
-		List<SearchHandler> allSearchHandlers = restHelperService.getRegisteredSearchHandlers();
+		allSearchHandlers = restHelperService.getRegisteredSearchHandlers();
 		for (SearchHandler searchHandler : allSearchHandlers) {
 			addSearchHandler(tempSearchHandlersByIds, tempSearchHandlersByParameters, tempSearchHandlersByResource,
 			    searchHandler);

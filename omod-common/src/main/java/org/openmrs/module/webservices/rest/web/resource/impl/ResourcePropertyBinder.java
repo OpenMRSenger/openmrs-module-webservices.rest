@@ -23,7 +23,12 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 public class ResourcePropertyBinder {
+
 	
+	
+	private ResourcePropertyBinder() {
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> void setConvertedProperties(BaseDelegatingResource<T> resource, T delegate, Map<String, Object> propertyMap,
 	        DelegatingResourceDescription description, boolean mustIncludeRequiredProperties) throws ConversionException {

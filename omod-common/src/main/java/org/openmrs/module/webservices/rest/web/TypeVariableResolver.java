@@ -16,7 +16,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TypeVariableResolver {
+
 	
+	
+	private TypeVariableResolver() {
+	}
+
 	private static final Map<String, Type> typeVariableMap = new ConcurrentHashMap<String, Type>();
 	
 	@SuppressWarnings("rawtypes")
