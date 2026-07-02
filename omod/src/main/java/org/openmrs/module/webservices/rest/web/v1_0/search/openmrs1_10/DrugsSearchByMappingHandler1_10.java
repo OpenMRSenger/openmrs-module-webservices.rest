@@ -1,6 +1,9 @@
 /**
  * This Source Code Form is subject to the terms of the Mozilla Public License,
  * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+/**
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
  * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
  * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
  *
@@ -12,8 +15,6 @@ package org.openmrs.module.webservices.rest.web.v1_0.search.openmrs1_10;
 import java.util.Collections;
 import java.util.List;
 
-import org.openmrs.ConceptMapType;
-import org.openmrs.ConceptSource;
 import org.openmrs.Drug;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -31,18 +32,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class DrugsSearchByMappingHandler1_10 extends BaseSearchHandler {
 	
-	public static final String REQUEST_PARAM_CODE = "code";
-	
-	public static final String REQUEST_PARAM_SOURCE = "source";
-	
-	public static final String REQUEST_PARAM_MAP_TYPES = "preferredMapTypes";
-	
-	SearchQuery searchQuery = new SearchQuery.Builder(
+	SearchQuery searchQuery = buildDrugMappingSearchQuery(
 	        "Allows you to find drugs by source, code and preferred map types(comma delimited). "
 	                + "Gets the best matching drug, i.e. matching the earliest ConceptMapType passed if there are "
-	                + "multiple matches for the highest-priority ConceptMapType")
-	        .withRequiredParameters(REQUEST_PARAM_SOURCE)
-	        .withOptionalParameters(REQUEST_PARAM_CODE, REQUEST_PARAM_MAP_TYPES).build();
+	                + "multiple matches for the highest-priority ConceptMapType");
 	
 	private final SearchConfig searchConfig = new SearchConfig("getDrugsByMapping", RestConstants.VERSION_1 + "/drug",
 			Collections.singletonList("1.10.* - 9.*"), searchQuery);
@@ -60,11 +53,9 @@ public class DrugsSearchByMappingHandler1_10 extends BaseSearchHandler {
 	 */
 	@Override
 	public PageableResult search(RequestContext context) throws ResponseException {
-		String code = context.getParameter(REQUEST_PARAM_CODE);
-		ConceptSource source = getConceptSource(context.getParameter(REQUEST_PARAM_SOURCE));
-		List<ConceptMapType> mapTypesInOrderOfPreference = getConceptMapTypes(context.getParameter(REQUEST_PARAM_MAP_TYPES));
+		DrugMappingSearchCriteria criteria = parseDrugMappingCriteria(context);
 		
-		List<Drug> drugs = conceptService.getDrugsByMapping(code, source, mapTypesInOrderOfPreference,
+		List<Drug> drugs = conceptService.getDrugsByMapping(criteria.code, criteria.source, criteria.mapTypes,
 		    context.getIncludeAll());
 		return new NeedsPaging<Drug>(drugs, context);
 	}

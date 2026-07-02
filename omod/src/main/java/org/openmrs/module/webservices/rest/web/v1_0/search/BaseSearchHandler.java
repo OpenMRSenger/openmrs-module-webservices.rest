@@ -25,6 +25,8 @@ import org.openmrs.api.OrderService;
 import org.openmrs.api.PatientService;
 import org.openmrs.module.webservices.rest.web.ConversionUtil;
 import org.openmrs.module.webservices.rest.web.resource.api.SearchHandler;
+import org.openmrs.module.webservices.rest.web.RequestContext;
+import org.openmrs.module.webservices.rest.web.resource.api.SearchQuery;
 import org.openmrs.module.webservices.rest.web.response.ObjectNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,6 +36,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
  * for parameter parsing, type conversion, and domain object resolution.
  */
 public abstract class BaseSearchHandler implements SearchHandler {
+	
+	public static final String DRUG_PARAM_CODE = "code";
+	
+	public static final String DRUG_PARAM_SOURCE = "source";
+	
+	public static final String DRUG_PARAM_MAP_TYPES = "preferredMapTypes";
 	
 	@Autowired
 	@Qualifier("patientService")
@@ -46,6 +54,32 @@ public abstract class BaseSearchHandler implements SearchHandler {
 	@Autowired
 	@Qualifier("conceptService")
 	protected ConceptService conceptService;
+	
+	public static class DrugMappingSearchCriteria {
+		public final String code;
+		public final ConceptSource source;
+		public final List<ConceptMapType> mapTypes;
+		
+		public DrugMappingSearchCriteria(String code, ConceptSource source, List<ConceptMapType> mapTypes) {
+			this.code = code;
+			this.source = source;
+			this.mapTypes = mapTypes;
+		}
+	}
+	
+	protected DrugMappingSearchCriteria parseDrugMappingCriteria(RequestContext context) throws ObjectNotFoundException {
+		return new DrugMappingSearchCriteria(
+			context.getParameter(DRUG_PARAM_CODE),
+			getConceptSource(context.getParameter(DRUG_PARAM_SOURCE)),
+			getConceptMapTypes(context.getParameter(DRUG_PARAM_MAP_TYPES))
+		);
+	}
+	
+	protected SearchQuery buildDrugMappingSearchQuery(String description) {
+		return new SearchQuery.Builder(description)
+				.withRequiredParameters(DRUG_PARAM_SOURCE)
+				.withOptionalParameters(DRUG_PARAM_CODE, DRUG_PARAM_MAP_TYPES).build();
+	}
 	
 	/**
 	 * Resolves a patient from a UUID string. Throws ObjectNotFoundException if not found.

@@ -13,8 +13,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.openmrs.ConceptMapType;
-import org.openmrs.ConceptSource;
 import org.openmrs.Drug;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
@@ -33,18 +31,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class DrugSearchByMappingHandler1_10 extends BaseSearchHandler {
 	
-	public static final String REQUEST_PARAM_CODE = "code";
-	
-	public static final String REQUEST_PARAM_SOURCE = "source";
-	
-	public static final String REQUEST_PARAM_MAP_TYPES = "preferredMapTypes";
-	
-	SearchQuery searchQuery = new SearchQuery.Builder(
+	SearchQuery searchQuery = buildDrugMappingSearchQuery(
 	        "Allows you to find a drug by source, code and preferred map types(comma delimited). "
 	                + "Gets the best matching drug, i.e. matching the earliest ConceptMapType passed if there are "
-	                + "multiple matches for the highest-priority ConceptMapType")
-	        .withRequiredParameters(REQUEST_PARAM_SOURCE)
-	        .withOptionalParameters(REQUEST_PARAM_CODE, REQUEST_PARAM_MAP_TYPES).build();
+	                + "multiple matches for the highest-priority ConceptMapType");
 	
 	private final SearchConfig searchConfig = new SearchConfig("getDrugByMapping", RestConstants.VERSION_1 + "/drug",
 			Collections.singletonList("1.10.* - 9.*"), searchQuery);
@@ -62,11 +52,9 @@ public class DrugSearchByMappingHandler1_10 extends BaseSearchHandler {
 	 */
 	@Override
 	public PageableResult search(RequestContext context) throws ResponseException {
-		String code = context.getParameter(REQUEST_PARAM_CODE);
-		ConceptSource source = getConceptSource(context.getParameter(REQUEST_PARAM_SOURCE));
-		List<ConceptMapType> mapTypesInOrderOfPreference = getConceptMapTypes(context.getParameter(REQUEST_PARAM_MAP_TYPES));
+		DrugMappingSearchCriteria criteria = parseDrugMappingCriteria(context);
 		
-		Drug drug = conceptService.getDrugByMapping(code, source, mapTypesInOrderOfPreference);
+		Drug drug = conceptService.getDrugByMapping(criteria.code, criteria.source, criteria.mapTypes);
 		if (drug == null) {
 			return new EmptySearchResult();
 		}
