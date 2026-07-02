@@ -16,6 +16,8 @@ import java.util.List;
 import org.apache.commons.lang.StringUtils;
 import org.openmrs.CareSetting;
 import org.openmrs.Concept;
+import org.openmrs.ConceptMapType;
+import org.openmrs.ConceptSource;
 import org.openmrs.OrderType;
 import org.openmrs.Patient;
 import org.openmrs.api.ConceptService;
@@ -28,10 +30,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 /**
- * Shared base class for Order Search Handlers containing common parameter parsing,
- * formatting, and domain object validation logic.
+ * Universal abstract base class for Search Handlers containing generic helper methods
+ * for parameter parsing, type conversion, and domain object resolution.
  */
-public abstract class BaseOrderSearchHandler implements SearchHandler {
+public abstract class BaseSearchHandler implements SearchHandler {
 	
 	@Autowired
 	@Qualifier("patientService")
@@ -120,6 +122,41 @@ public abstract class BaseOrderSearchHandler implements SearchHandler {
 	}
 	
 	/**
+	 * Resolves a concept source from a UUID string. Throws ObjectNotFoundException if not found.
+	 */
+	protected ConceptSource getConceptSource(String sourceUuid) throws ObjectNotFoundException {
+		if (StringUtils.isNotBlank(sourceUuid)) {
+			ConceptSource source = conceptService.getConceptSourceByUuid(sourceUuid);
+			if (source == null) {
+				throw new ObjectNotFoundException();
+			}
+			return source;
+		}
+		return null;
+	}
+	
+	/**
+	 * Resolves a comma-separated list of concept map type UUIDs into a List of ConceptMapTypes.
+	 * Throws ObjectNotFoundException if list is provided but no types are resolved.
+	 */
+	protected List<ConceptMapType> getConceptMapTypes(String mapTypesUuids) throws ObjectNotFoundException {
+		if (StringUtils.isNotBlank(mapTypesUuids)) {
+			List<ConceptMapType> mapTypes = new ArrayList<ConceptMapType>();
+			for (String uuid : mapTypesUuids.split(",")) {
+				if (StringUtils.isNotBlank(uuid)) {
+					ConceptMapType mapType = conceptService.getConceptMapTypeByUuid(uuid.trim());
+					if (mapType == null) {
+						throw new ObjectNotFoundException();
+					}
+					mapTypes.add(mapType);
+				}
+			}
+			return mapTypes;
+		}
+		return null;
+	}
+	
+	/**
 	 * Converts a string-based ISO date representation into a Date object.
 	 */
 	protected Date parseDate(String dateStr) {
@@ -130,7 +167,7 @@ public abstract class BaseOrderSearchHandler implements SearchHandler {
 	 * Converts a string boolean representation into a boolean value.
 	 */
 	protected boolean parseBoolean(String boolStr) {
-		return StringUtils.isNotBlank(boolStr);
+		return StringUtils.isNotBlank(boolStr) ? Boolean.parseBoolean(boolStr) : false;
 	}
 	
 	/**

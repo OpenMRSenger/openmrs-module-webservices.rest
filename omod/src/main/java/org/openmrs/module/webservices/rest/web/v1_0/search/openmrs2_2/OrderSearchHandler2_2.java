@@ -21,7 +21,7 @@ import org.openmrs.module.webservices.rest.web.resource.api.SearchConfig;
 import org.openmrs.module.webservices.rest.web.resource.api.SearchQuery;
 import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ResponseException;
-import org.openmrs.module.webservices.rest.web.v1_0.search.BaseOrderSearchHandler;
+import org.openmrs.module.webservices.rest.web.v1_0.search.BaseSearchHandler;
 import org.openmrs.parameter.OrderSearchCriteria;
 import org.openmrs.parameter.OrderSearchCriteriaBuilder;
 import org.springframework.stereotype.Component;
@@ -35,7 +35,7 @@ import java.util.List;
  * range, and voided orders
  */
 @Component
-public class OrderSearchHandler2_2 extends BaseOrderSearchHandler {
+public class OrderSearchHandler2_2 extends BaseSearchHandler {
 	
 	public static final String REQUEST_PARAM_PATIENT = "patient";
 	

@@ -25,11 +25,11 @@ import org.openmrs.module.webservices.rest.web.v1_0.controller.RestControllerTes
 import java.util.Date;
 import java.util.List;
 
-public class BaseOrderSearchHandlerTest extends RestControllerTestUtils {
+public class BaseSearchHandlerTest extends RestControllerTestUtils {
 	
-	private TestOrderSearchHandler handler;
+	private TestSearchHandler handler;
 	
-	private static class TestOrderSearchHandler extends BaseOrderSearchHandler {
+	private static class TestSearchHandler extends BaseSearchHandler {
 		@Override
 		public SearchConfig getSearchConfig() {
 			return null;
@@ -43,7 +43,7 @@ public class BaseOrderSearchHandlerTest extends RestControllerTestUtils {
 	
 	@Before
 	public void setup() {
-		handler = new TestOrderSearchHandler();
+		handler = new TestSearchHandler();
 		handler.patientService = org.openmrs.api.context.Context.getPatientService();
 		handler.orderService = org.openmrs.api.context.Context.getOrderService();
 		handler.conceptService = org.openmrs.api.context.Context.getConceptService();
@@ -118,6 +118,42 @@ public class BaseOrderSearchHandlerTest extends RestControllerTestUtils {
 	public void getOrderTypes_shouldReturnNullForBlankUuids() throws Exception {
 		Assert.assertNull(handler.getOrderTypes(""));
 		Assert.assertNull(handler.getOrderTypes(null));
+	}
+	
+	@Test
+	public void getConceptSource_shouldReturnConceptSourceForValidUuid() throws Exception {
+		org.openmrs.ConceptSource source = org.openmrs.api.context.Context.getConceptService().getAllConceptSources(true).get(0);
+		Assert.assertNotNull(handler.getConceptSource(source.getUuid()));
+	}
+	
+	@Test(expected = ObjectNotFoundException.class)
+	public void getConceptSource_shouldThrowExceptionForInvalidUuid() throws Exception {
+		handler.getConceptSource("INVALID_UUID");
+	}
+	
+	@Test
+	public void getConceptSource_shouldReturnNullForBlankUuid() throws Exception {
+		Assert.assertNull(handler.getConceptSource(""));
+		Assert.assertNull(handler.getConceptSource(null));
+	}
+	
+	@Test
+	public void getConceptMapTypes_shouldReturnConceptMapTypeListForValidUuids() throws Exception {
+		org.openmrs.ConceptMapType mapType = org.openmrs.api.context.Context.getConceptService().getConceptMapTypes(true, true).get(0);
+		List<org.openmrs.ConceptMapType> mapTypes = handler.getConceptMapTypes(mapType.getUuid());
+		Assert.assertNotNull(mapTypes);
+		Assert.assertEquals(1, mapTypes.size());
+	}
+	
+	@Test(expected = ObjectNotFoundException.class)
+	public void getConceptMapTypes_shouldThrowExceptionIfNoConceptMapTypesFound() throws Exception {
+		handler.getConceptMapTypes("INVALID_UUID1,INVALID_UUID2");
+	}
+	
+	@Test
+	public void getConceptMapTypes_shouldReturnNullForBlankUuids() throws Exception {
+		Assert.assertNull(handler.getConceptMapTypes(""));
+		Assert.assertNull(handler.getConceptMapTypes(null));
 	}
 	
 	@Test
