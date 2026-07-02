@@ -130,6 +130,36 @@ Door de methode te ontleden naar losse Strategy-klassen is de nesting volledig v
 | `MapConverter` | **2** | Delegatie naar `convertMap`. |
 | `StringConverter` (inclusief Datum/Enum) | **8** | Afhandeling datum lussen en reflectie try-catches. |
 
+#### StringConverter — concrete gedrag
+
+De huidige `StringConverter`-implementatie volgt het strategie/registry-ontwerp en ondersteunt de volgende conversieroutes wanneer de bron een `String` is:
+
+- Converter registry: als er een `Converter` geregistreerd is voor het target `toClass`, wordt `getByUniqueId(String)` gebruikt.
+- Datumparsing: probeert een vaste lijst van datumformaten (ISO-achtige en eenvoudige datum/tijd-formaten). De parser gebruikt `DateTimeFormatter.parseBest(...)` en accepteert `ZonedDateTime`, `OffsetDateTime`, `LocalDateTime` en `LocalDate`. De geaccepteerde patronen zijn onder andere:
+  - `yyyy-MM-dd'T'HH:mm:ss.SSSZ`
+  - `yyyy-MM-dd'T'HH:mm:ss.SSSXXX`
+  - `yyyy-MM-dd'T'HH:mm:ss.SSSXX`
+  - `yyyy-MM-dd'T'HH:mm:ss.SSSx`
+  - `yyyy-MM-dd'T'HH:mm:ss.SSSX`
+  - `yyyy-MM-dd'T'HH:mm:ss.SSS`
+  - `yyyy-MM-dd'T'HH:mm:ssZ`
+  - `yyyy-MM-dd'T'HH:mm:ssXXX`
+  - `yyyy-MM-dd'T'HH:mm:ssXX`
+  - `yyyy-MM-dd'T'HH:mm:ssx`
+  - `yyyy-MM-dd'T'HH:mm:ssX`
+  - `yyyy-MM-dd'T'HH:mm:ss`
+  - `yyyy-MM-dd HH:mm:ss`
+  - `yyyy-MM-dd`
+  Geparste tijdstippen worden omgezet naar `java.util.Date` via de juiste tijdzone (`ZonedDateTime`/`OffsetDateTime`) of het systeemzone voor lokale types.
+- Locale: `LocaleUtility.fromSpecification(String)` wordt gebruikt om `Locale`-waarden te maken.
+- Enum: de `String` wordt omgezet via `Enum.valueOf(...)` met `string.toUpperCase()` om hoofdlettergevoeligheid te normaliseren.
+- Class: probeert `Context.loadClass(String)` om een `Class`-object te laden; bij failure wordt een `ConversionException` gegooid.
+- Reflectieve `valueOf(String)`: zoekt een publieke statische `valueOf(String)`-methode op het doeltype en gebruikt die wanneer beschikbaar.
+
+Als geen route van boven toepasbaar is, gooit de converter een `ConversionException` met een duidelijke foutmelding.
+
+Opmerking: de datumformatenlijst en parsingstrategie zijn gedocumenteerd hier omdat ze impact hebben op integraties die timezone-aware timestamps vereisen (bijv. webhooks die OffsetDateTime gebruiken). Als er afwijkende ISO-varianten nodig zijn, werk dan de `StringConverter`-implementatie bij en synchroniseer dit gedeelte van het ontwerpdocument.
+
 ---
 
 ## 4. Refactoringsplannen voor overige klassen & methoden
