@@ -1,0 +1,29 @@
+OpenMRSenger pentest [after] - 2026-07-03 14:48:06
+Lokale git-commit: ce8d11466bd1ee1d010aa10bd8d2573f67e7bed6
+
+
+ID      Test                                                           HTTP                                  Bestand                              
+--      ----                                                           ----                                  -------                              
+PEN-01a Basic Auth over plain HTTP zonder TLS-signaal (hoort te falen) 403                                   pen01a-plain-http-blocked.json       
+PEN-01b Login met X-Forwarded-Proto: https                             200 / authenticated:true              pen01b-session-authenticated.json    
+PEN-02  Unauth GET /patient                                            401                                   after\pen02-unauth-patient.json      
+PEN-02  Unauth GET /person                                             401                                   after\pen02-unauth-person.json       
+PEN-02  Unauth GET /user                                               401                                   after\pen02-unauth-user.json         
+PEN-02  Unauth GET /encounter                                          400                                   after\pen02-unauth-encounter.json    
+PEN-02  Unauth GET /obs                                                400                                   after\pen02-unauth-obs.json          
+PEN-02  Unauth GET /systemsetting                                      401                                   after\pen02-unauth-systemsetting.json
+PEN-02  Unauth GET /module-list                                        401                                   after\pen02-unauth-module-list.json  
+PEN-03  Header Strict-Transport-Security                               ONTBREEKT                             pen03-headers.txt                    
+PEN-03  Header Content-Security-Policy                                 ONTBREEKT                             pen03-headers.txt                    
+PEN-03  Header X-Content-Type-Options                                  ONTBREEKT                             pen03-headers.txt                    
+PEN-03  Header X-Frame-Options                                         ONTBREEKT                             pen03-headers.txt                    
+PEN-03  Header Referrer-Policy                                         ONTBREEKT                             pen03-headers.txt                    
+PEN-04  Verbose error op ongeldige UUID                                404                                   pen04-error-baduuid.json             
+PEN-05  OPTIONS/TRACE probe                                            zie bestand                           pen05-options.txt / pen05-trace.txt  
+PEN-06  Brute-force 8 pogingen op /session                             geen 429 gezien                       pen06-*.txt                          
+PEN-07  Low-priv user wijzigt wachtwoord van ander account             500 (poging was: PenTest-f6e1c43226!) pen07-idor-changepassword.json       
+PEN-08  commons-codec versie (SBOM)                                    1.22.0                                pen08-commons-codec.txt              
+PEN-09  Stacktrace-lek (config default=false)                          404 / geen stacktrace zichtbaar       pen09-error-baduuid.json             
+
+
+

@@ -1,0 +1,7 @@
+HTTP/1.1 200 
+Set-Cookie: JSESSIONID=E0965A1C8415EDC41E6B8878436010F1; Path=/openmrs; HttpOnly
+Allow: POST,DELETE,GET,HEAD,OPTIONS
+Accept-Patch: 
+Content-Length: 0
+Date: Fri, 03 Jul 2026 12:48:04 GMT
+
