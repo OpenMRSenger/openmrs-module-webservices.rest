@@ -747,11 +747,20 @@ public class RestUtil implements GlobalPropertyListener {
 	 */
 	public static SimpleObject wrapErrorResponse(Exception ex, String reason) {
 		log.error(reason, ex);
+		log.error(reason, ex);
 		
 		LinkedHashMap<String, String> map = new LinkedHashMap<>();
 		if (StringUtils.isNotBlank(reason)) {
 			map.put(PROPERTY_MESSAGE, reason);
+		if (StringUtils.isNotBlank(reason)) {
+			map.put(PROPERTY_MESSAGE, reason);
 		} else {
+			map.put(PROPERTY_MESSAGE, "An unexpected error occurred.");
+		}
+		
+		map.put("code", "INTERNAL_ERROR");
+		map.put("detail", "Details are recorded in server logs.");
+		map.put("rawMessage", "");
 			map.put(PROPERTY_MESSAGE, "An unexpected error occurred.");
 		}
 		
