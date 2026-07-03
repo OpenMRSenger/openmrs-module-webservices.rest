@@ -41,6 +41,10 @@ import java.util.Collection;
         "1.8.* - 9.*" })
 public class TaskActionResource1_8 extends BaseDelegatingResource<TaskAction> implements Creatable {
 	
+	private static final String PROPERTY_TASKS = "tasks";
+	
+	private static final String PROPERTY_ACTION = "action";
+	
 	private TaskServiceWrapper taskServiceWrapper = new TaskServiceWrapper();
 	
 	public void setTaskServiceWrapper(TaskServiceWrapper taskServiceWrapper) {
@@ -84,6 +88,8 @@ public class TaskActionResource1_8 extends BaseDelegatingResource<TaskAction> im
 			case RUNTASK:
 				runTasks(taskDefinitions);
 				break;
+			default:
+				throw new IllegalRequestException("Unsupported action: " + action.getAction());
 		}
 		return ConversionUtil.convertToRepresentation(action, Representation.DEFAULT);
 	}
@@ -162,48 +168,48 @@ public class TaskActionResource1_8 extends BaseDelegatingResource<TaskAction> im
 	
 	@Override
 	public TaskAction save(TaskAction delegate) {
-		throw new UnsupportedOperationException("TaskAction cannot be saved");
+		throw new ResourceDoesNotSupportOperationException("TaskAction cannot be saved");
 	}
 	
 	@Override
 	public DelegatingResourceDescription getRepresentationDescription(Representation rep) {
 		DelegatingResourceDescription description = new DelegatingResourceDescription();
-		description.addProperty("tasks", Representation.REF);
-		description.addProperty("action", "action");
+		description.addProperty(PROPERTY_TASKS, Representation.REF);
+		description.addProperty(PROPERTY_ACTION, PROPERTY_ACTION);
 		return description;
 	}
 	
 	@Override
 	public TaskAction getByUniqueId(String uniqueId) {
-		throw new UnsupportedOperationException("TaskAction can not get by id");
+		throw new ResourceDoesNotSupportOperationException("TaskAction can not get by id");
 	}
 	
 	@Override
 	protected void delete(TaskAction delegate, String reason, RequestContext context) throws ResponseException {
-		throw new UnsupportedOperationException("TaskAction can not be deleted");
+		throw new ResourceDoesNotSupportOperationException("TaskAction can not be deleted");
 	}
 	
 	@Override
 	public void purge(TaskAction delegate, RequestContext context) throws ResponseException {
-		throw new UnsupportedOperationException("TaskAction can not be purged");
+		throw new ResourceDoesNotSupportOperationException("TaskAction can not be purged");
 	}
 	
 	@Override
 	public DelegatingResourceDescription getCreatableProperties() throws ResourceDoesNotSupportOperationException {
 		DelegatingResourceDescription description = new DelegatingResourceDescription();
-		description.addProperty("tasks");
+		description.addProperty(PROPERTY_TASKS);
 		description.addProperty("allTasks");
-		description.addRequiredProperty("action", "action");
+		description.addRequiredProperty(PROPERTY_ACTION, PROPERTY_ACTION);
 		return description;
 	}
 	
 	@Override
 	public Model getCREATEModel(Representation rep) {
 		ModelImpl model = new ModelImpl();
-		model.property("tasks", new ArrayProperty(new StringProperty()));
+		model.property(PROPERTY_TASKS, new ArrayProperty(new StringProperty()));
 		model.property("allTasks", new BooleanProperty());
-		model.property("action", new EnumProperty(TaskAction.Action.class));
-		model.required("action");
+		model.property(PROPERTY_ACTION, new EnumProperty(TaskAction.Action.class));
+		model.required(PROPERTY_ACTION);
 		return model;
 	}
 	

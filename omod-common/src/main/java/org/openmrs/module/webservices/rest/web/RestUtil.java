@@ -20,40 +20,31 @@ import org.openmrs.OpenmrsMetadata;
 import org.openmrs.api.GlobalPropertyListener;
 import org.openmrs.api.ValidationException;
 import org.openmrs.api.context.Context;
-import org.openmrs.messagesource.MessageSourceService;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.api.RestService;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.Resource;
 import org.openmrs.module.webservices.rest.web.resource.api.SubResource;
-import org.openmrs.util.OpenmrsClassLoader;
 import org.openmrs.util.PrivilegeConstants;
-import org.springframework.validation.FieldError;
-import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.ServletRequestUtils;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
+ 
 /**
  * Convenient helper methods for the Rest Web Services module.
  */
@@ -148,6 +139,71 @@ public class RestUtil implements GlobalPropertyListener {
 	 *         <strong>Should</strong> return true for exact ipv6 match <strong>Should</strong> throw
 	 *         IllegalArgumentException for invalid mask
 	 */
+	private interface IpMatcher {
+		boolean matches(InetAddress address, String candidatePattern);
+	}
+
+	private static final List<IpMatcher> ipMatchers = new ArrayList<IpMatcher>();
+
+	static {
+		ipMatchers.add(new ExactIpMatcher());
+		ipMatchers.add(new CidrIpMatcher());
+	}
+
+	private static class ExactIpMatcher implements IpMatcher {
+		@Override
+		public boolean matches(InetAddress address, String candidatePattern) {
+			if (candidatePattern.contains("/")) {
+				return false;
+			}
+			try {
+				InetAddress candidateAddress = InetAddress.getByName(candidatePattern);
+				return address.equals(candidateAddress);
+			}
+			catch (UnknownHostException e) {
+				throw new IllegalArgumentException("Invalid IP in the candidateIps parameter", e);
+			}
+		}
+	}
+
+	private static class CidrIpMatcher implements IpMatcher {
+		@Override
+		public boolean matches(InetAddress address, String candidatePattern) {
+			if (!candidatePattern.contains("/")) {
+				return false;
+			}
+			String[] parts = candidatePattern.split("/");
+			InetAddress candidateAddress;
+			try {
+				candidateAddress = InetAddress.getByName(parts[0]);
+			}
+			catch (UnknownHostException e) {
+				throw new IllegalArgumentException("Invalid IP in the candidateIps parameter", e);
+			}
+			
+			if (address.getAddress().length != candidateAddress.getAddress().length) {
+				return false;
+			}
+			
+			int bits = Integer.parseInt(parts[1]);
+			if (candidateAddress.getAddress().length < Math.ceil((double) bits / 8)) {
+				throw new IllegalArgumentException(
+				        "Invalid mask " + bits + " for IP " + candidatePattern + " in the candidateIps parameter");
+			}
+			
+			for (int bytes = 0; bits > 0; bytes++, bits -= 8) {
+				int mask = 0x000000FF;
+				if (bits < 8) {
+					mask = (mask << (8 - bits));
+				}
+				if ((address.getAddress()[bytes] & mask) != (candidateAddress.getAddress()[bytes] & mask)) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
 	public static boolean ipMatches(String ip, List<String> candidateIps) {
 		if (candidateIps.isEmpty()) {
 			return true;
@@ -162,50 +218,11 @@ public class RestUtil implements GlobalPropertyListener {
 		}
 		
 		for (String candidateIp : candidateIps) {
-			// split IP and mask
-			String[] candidateIpPattern = candidateIp.split("/");
-			
-			InetAddress candidateAddress;
-			try {
-				candidateAddress = InetAddress.getByName(candidateIpPattern[0]);
-			}
-			catch (UnknownHostException e) {
-				throw new IllegalArgumentException("Invalid IP in the candidateIps parameter", e);
-			}
-			
-			if (candidateIpPattern.length == 1) { // there's no mask
-				if (address.equals(candidateAddress)) {
-					return true;
-				}
-			} else {
-				if (address.getAddress().length != candidateAddress.getAddress().length) {
-					continue;
-				}
-				
-				int bits = Integer.parseInt(candidateIpPattern[1]);
-				if (candidateAddress.getAddress().length < Math.ceil((double) bits / 8)) {
-					throw new IllegalArgumentException(
-					        "Invalid mask " + bits + " for IP " + candidateIp + " in the candidateIps parameter");
-				}
-				
-				// compare bytes based on the given mask
-				boolean matched = true;
-				for (int bytes = 0; bits > 0; bytes++, bits -= 8) {
-					int mask = 0x000000FF; // mask the entire byte
-					if (bits < 8) {
-						// mask only some first bits of a byte
-						mask = (mask << (8 - bits));
-					}
-					if ((address.getAddress()[bytes] & mask) != (candidateAddress.getAddress()[bytes] & mask)) {
-						matched = false;
-						break;
-					}
-				}
-				if (matched) {
+			for (IpMatcher matcher : ipMatchers) {
+				if (matcher.matches(address, candidateIp)) {
 					return true;
 				}
 			}
-			
 		}
 		return false;
 	}
@@ -554,11 +571,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static void setResponseStatus(Throwable ex, HttpServletResponse response) {
 		ResponseStatus ann = ex.getClass().getAnnotation(ResponseStatus.class);
 		if (ann != null) {
-			if (StringUtils.isNotBlank(ann.reason())) {
-				response.setStatus(ann.value().value(), ann.reason());
-			} else {
-				response.setStatus(ann.value().value());
-			}
+			response.setStatus(ann.value().value());
 		} else {
 			response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 		}
@@ -589,7 +602,9 @@ public class RestUtil implements GlobalPropertyListener {
 			String uri = (String) PropertyUtils.getProperty(created, "uri");
 			response.addHeader("Location", uri);
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			log.debug("Unable to set Location header for created resource", ex);
+		}
 		return created;
 	}
 	
@@ -606,7 +621,9 @@ public class RestUtil implements GlobalPropertyListener {
 			String uri = (String) PropertyUtils.getProperty(updated, "uri");
 			response.addHeader("Location", uri);
 		}
-		catch (Exception ex) {}
+		catch (Exception ex) {
+			log.debug("Unable to set Location header for updated resource", ex);
+		}
 		return updated;
 	}
 	
@@ -649,7 +666,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <D extends OpenmrsData, C extends Collection<D>> Set<D> removeVoidedData(C input) {
 		Set<D> data = new LinkedHashSet<D>();
 		for (D d : input) {
-			if (!d.isVoided()) {
+			if (!Boolean.TRUE.equals(d.getVoided())) {
 				data.add(d);
 			}
 		}
@@ -666,7 +683,7 @@ public class RestUtil implements GlobalPropertyListener {
 	public static <M extends OpenmrsMetadata, C extends Collection<M>> Set<M> removeRetiredData(C input) {
 		Set<M> data = new LinkedHashSet<M>();
 		for (M m : input) {
-			if (!m.isRetired()) {
+			if (!Boolean.TRUE.equals(m.getRetired())) {
 				data.add(m);
 			}
 		}
@@ -717,99 +734,8 @@ public class RestUtil implements GlobalPropertyListener {
 	 * @param suffix the ending text on name. eg "Resource.class"
 	 * @return the list of classes.
 	 */
-	public static ArrayList<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
-		ArrayList<Class<?>> classes = new ArrayList<Class<?>>();
-		
-		//Get a File object for the package
-		File directory = null;
-		String relPath = pkgname.replace('.', '/');
-		Enumeration<URL> resources = OpenmrsClassLoader.getInstance().getResources(relPath);
-		while (resources.hasMoreElements()) {
-			
-			URL resource = resources.nextElement();
-			if (resource == null) {
-				throw new RuntimeException("No resource for " + relPath);
-			}
-			
-			try {
-				directory = new File(resource.toURI());
-			}
-			catch (URISyntaxException e) {
-				throw new RuntimeException(
-				        pkgname + " (" + resource
-				                + ") does not appear to be a valid URL / URI.  Strange, since we got it from the system...",
-				        e);
-			}
-			catch (IllegalArgumentException ex) {}
-			
-			//If folder exists, look for all resource class files in it.
-			if (directory != null && directory.exists()) {
-				
-				//Get the list of the files contained in the package
-				String[] files = directory.list();
-				
-				for (int i = 0; i < files.length; i++) {
-					
-					//We are only interested in Resource.class files
-					if (files[i].endsWith(suffix)) {
-						
-						//Remove the .class extension
-						String className = pkgname + '.' + files[i].substring(0, files[i].length() - 6);
-						
-						try {
-							Class<?> cls = Class.forName(className);
-							if (!cls.isInterface())
-								classes.add(cls);
-						}
-						catch (ClassNotFoundException e) {
-							throw new RuntimeException("ClassNotFoundException loading " + className);
-						}
-					}
-				}
-			} else {
-				
-				//Directory does not exist, look in jar file.
-				JarFile jarFile = null;
-				try {
-					String fullPath = resource.getFile();
-					String jarPath = fullPath.replaceFirst("[.]jar[!].*", ".jar").replaceFirst("file:", "");
-					jarFile = new JarFile(jarPath);
-					
-					Enumeration<JarEntry> entries = jarFile.entries();
-					while (entries.hasMoreElements()) {
-						JarEntry entry = entries.nextElement();
-						
-						String entryName = entry.getName();
-						
-						if (!entryName.endsWith(suffix))
-							continue;
-						
-						if (entryName.startsWith(relPath) && entryName.length() > (relPath.length() + "/".length())) {
-							String className = entryName.replace('/', '.').replace('\\', '.').replace(".class", "");
-							
-							try {
-								Class<?> cls = Class.forName(className);
-								if (!cls.isInterface())
-									classes.add(cls);
-							}
-							catch (ClassNotFoundException e) {
-								throw new RuntimeException("ClassNotFoundException loading " + className);
-							}
-						}
-					}
-				}
-				catch (IOException e) {
-					throw new RuntimeException(pkgname + " (" + directory + ") does not appear to be a valid package", e);
-				}
-				finally {
-					if (jarFile != null) {
-						jarFile.close();
-					}
-				}
-			}
-		}
-		
-		return classes;
+	public static List<Class<?>> getClassesForPackage(String pkgname, String suffix) throws IOException {
+		return ClasspathPackageScanner.getClassesForPackage(pkgname, suffix);
 	}
 	
 	/**
@@ -844,54 +770,7 @@ public class RestUtil implements GlobalPropertyListener {
 	 * @return
 	 */
 	public static SimpleObject wrapValidationErrorResponse(ValidationException ex) {
-		
-		MessageSourceService messageSourceService = Context.getMessageSourceService();
-		
-		SimpleObject errors = new SimpleObject();
-		errors.add(PROPERTY_MESSAGE, messageSourceService.getMessage("webservices.rest.error.invalid.submission"));
-		errors.add("code", "webservices.rest.error.invalid.submission");
-		
-		List<SimpleObject> globalErrors = new ArrayList<SimpleObject>();
-		SimpleObject fieldErrors = new SimpleObject();
-		
-		if (ex.getErrors().hasGlobalErrors()) {
-			
-			for (Object errObj : ex.getErrors().getGlobalErrors()) {
-				
-				ObjectError err = (ObjectError) errObj;
-				String message = messageSourceService.getMessage(err.getCode(), err.getArguments(), err.getDefaultMessage(), Context.getLocale());
-				
-				SimpleObject globalError = new SimpleObject();
-				globalError.put("code", err.getCode());
-				globalError.put(PROPERTY_MESSAGE, message);
-				globalErrors.add(globalError);
-			}
-			
-		}
-		
-		if (ex.getErrors().hasFieldErrors()) {
-			
-			for (Object errObj : ex.getErrors().getFieldErrors()) {
-				FieldError err = (FieldError) errObj;
-				String message = messageSourceService.getMessage(err.getCode(), err.getArguments(), err.getDefaultMessage(), Context.getLocale());
-				
-				SimpleObject fieldError = new SimpleObject();
-				fieldError.put("code", err.getCode());
-				fieldError.put(PROPERTY_MESSAGE, message);
-				
-				if (!fieldErrors.containsKey(err.getField())) {
-					fieldErrors.put(err.getField(), new ArrayList<SimpleObject>());
-				}
-				
-				((List<SimpleObject>) fieldErrors.get(err.getField())).add(fieldError);
-			}
-			
-		}
-		
-		errors.put("globalErrors", globalErrors);
-		errors.put("fieldErrors", fieldErrors);
-		
-		return new SimpleObject().add("error", errors);
+		return ValidationErrorFormatter.wrapValidationErrorResponse(ex);
 	}
 	
 	/**
