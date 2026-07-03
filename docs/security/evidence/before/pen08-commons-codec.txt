@@ -1,0 +1,1 @@
+pom.xml commons-codec versie: 1.22.0

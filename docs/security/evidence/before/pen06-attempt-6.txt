@@ -1,0 +1,7 @@
+HTTP/1.1 200 
+Set-Cookie: JSESSIONID=5185A2E7A14FC7040AA1CE542A2D4A39; Path=/openmrs; HttpOnly
+ETag: "0b3476c7c068c976e27263a9da6d9feee"
+Content-Type: application/json;charset=UTF-8
+Content-Length: 129
+Date: Fri, 03 Jul 2026 09:51:36 GMT
+
