@@ -1,0 +1,14 @@
+
+Poging HTTP Resultaat           RetryAfterHeader
+------ ---- ---------           ----------------
+     1 200  authenticated:false nee             
+     2 200  authenticated:false nee             
+     3 200  authenticated:false nee             
+     4 200  authenticated:false nee             
+     5 200  authenticated:false nee             
+     6 200  authenticated:false nee             
+     7 200  authenticated:false nee             
+     8 200  authenticated:false nee             
+
+
+

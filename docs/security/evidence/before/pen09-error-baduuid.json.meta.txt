@@ -1,0 +1,2 @@
+config.xml default: false
+Runtime-resultaat: STACKTRACE ZICHTBAAR
