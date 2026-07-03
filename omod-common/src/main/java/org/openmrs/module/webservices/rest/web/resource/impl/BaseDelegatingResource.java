@@ -584,72 +584,7 @@ public abstract class BaseDelegatingResource<T> extends BaseDelegatingConverter<
 	 */
 	public void setConvertedProperties(T delegate, Map<String, Object> propertyMap,
 	        DelegatingResourceDescription description, boolean mustIncludeRequiredProperties) throws ConversionException {
-		Map<String, Property> allowedProperties = new LinkedHashMap<String, Property>(description.getProperties());
-		
-		Map<String, Object> propertiesToSet = new HashMap<String, Object>(propertyMap);
-		propertiesToSet.keySet().removeAll(propertiesIgnoredWhenUpdating);
-		
-		// Apply properties in the order specified in the resource description (necessary e.g. so the obs resource
-		// can apply "concept" before "value"); we have already excluded unchanged and ignored properties.
-		// Because some resources (e.g. any AttributeResource) require some properties to be set before others can
-		// be fetched, we apply each property in its iteration, rather than testing everything first and applying later.
-		for (String property : allowedProperties.keySet()) {
-			if (!propertiesToSet.containsKey(property)) {
-				continue;
-			}
-			if (propertiesToSet.containsKey(property)) {
-				// Ignore any properties that were not actually changed, also covering the case where you post back an
-				// incomplete rep of a complex property
-				Object oldValue = getProperty(delegate, property);
-				Object newValue = propertiesToSet.get(property);
-				if (unchangedValue(oldValue, newValue)) {
-					propertiesToSet.remove(property);
-					continue;
-				}
-				
-				setProperty(delegate, property, propertiesToSet.get(property));
-			}
-		}
-		
-		// If any non-settable properties remain after the above logic, fail
-		Collection<String> notAllowedProperties = CollectionUtils.subtract(propertiesToSet.keySet(),
-		    allowedProperties.keySet());
-		// Do allow posting back an unchanged value to an unchangeable property
-		for (Iterator<String> iterator = notAllowedProperties.iterator(); iterator.hasNext();) {
-			String property = iterator.next();
-			Object oldValue = getProperty(delegate, property);
-			Object newValue = propertiesToSet.get(property);
-			if (unchangedValue(oldValue, newValue)) {
-				iterator.remove();
-			}
-		}
-		if (!notAllowedProperties.isEmpty()) {
-			throw new ConversionException("Some properties are not allowed to be set: "
-			        + StringUtils.join(notAllowedProperties, ", "));
-		}
-		
-		if (mustIncludeRequiredProperties) {
-			Set<String> missingProperties = new HashSet<String>();
-			for (Entry<String, Property> prop : allowedProperties.entrySet()) {
-				if (prop.getValue().isRequired() && !propertyMap.containsKey(prop.getKey())) {
-					missingProperties.add(prop.getKey());
-				}
-			}
-			if (!missingProperties.isEmpty()) {
-				throw new ConversionException("Some required properties are missing: "
-				        + StringUtils.join(missingProperties, ", "));
-			}
-		}
-	}
-	
-	private boolean unchangedValue(Object oldValue, Object newValue) {
-		if (newValue instanceof Map && oldValue != null && !(oldValue instanceof Map)) {
-			newValue = ConversionUtil.convert(newValue, oldValue.getClass());
-			if (oldValue instanceof OpenmrsObject) {
-				return ((OpenmrsObject) oldValue).getUuid().equals(((OpenmrsObject) newValue).getUuid());
-			}
-		}
-		return OpenmrsUtil.nullSafeEquals(oldValue, newValue);
+		ResourcePropertyBinder.setConvertedProperties(this, delegate, propertyMap, description, mustIncludeRequiredProperties);
 	}
 	
 	/**
